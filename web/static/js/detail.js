@@ -20,7 +20,7 @@ detailChart.setOption({
   ...chartBase(),
   grid: { ...chartBase().grid, bottom: 68 },
   dataZoom: [
-    { type: 'inside' },
+    { type: 'inside', zoomOnMouseWheel: false, moveOnMouseWheel: false },
     { type: 'slider', height: 17, bottom: 10, borderColor: COLORS.line,
       textStyle: { color: COLORS.muted }, fillerColor: 'rgba(80,99,133,.24)',
       handleStyle: { color: COLORS.blue } },

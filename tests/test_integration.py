@@ -199,6 +199,24 @@ class FlujoCompleto(DBTestCase):
         self.assertEqual(summary["availability"], [0] * 48)
         self.assertEqual(summary["availability_pct"], 0)
 
+    def test_motion_system_single_controller(self):
+        # En todas las vistas debe cargarse el único motor de navegación y scroll.
+        for path in ("/", "/servers", "/settings", "/servers/1"):
+            page = self.web.get(path)
+            self.assertEqual(page.status_code, 200)
+            self.assertIn(b"css/motion.css", page.data)
+            self.assertIn(b"js/motion.js", page.data)
+            self.assertIn(b'class="route-curtain"', page.data)
+
+        with open(os.path.join(ROOT, "web", "static", "js", "common.js"), encoding="utf-8") as fh:
+            common = fh.read()
+        with open(os.path.join(ROOT, "web", "static", "js", "motion.js"), encoding="utf-8") as fh:
+            motion = fh.read()
+        self.assertNotIn("addEventListener('wheel'", common)
+        self.assertNotIn("function navigateTo(", common)
+        self.assertIn("addEventListener('wheel'", motion)
+        self.assertIn("window.navigateTo = navigateTo", motion)
+
     def test_dashboard_compacto_y_navegacion_consistente(self):
         # Los tres KPI son el único resumen. No se exponen gráficas en el panel.
         page = self.web.get("/")

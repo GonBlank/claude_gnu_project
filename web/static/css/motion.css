@@ -1,0 +1,88 @@
+/* Consistent spatial motion. One shared component scheme across all pages. */
+:root {
+  --motion-enter: cubic-bezier(.16,1,.3,1);
+  --motion-standard: cubic-bezier(.2,0,0,1);
+  --motion-exit: cubic-bezier(.4,0,1,1);
+}
+/* Eliminate legacy page animations: the fixed curtain handles cross-document
+   navigation reliably, even when the browser discards the old DOM. */
+.page { animation: none !important; transition: none !important; }
+.route-curtain {
+  position: fixed;
+  z-index: 2050;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: #101015;
+  transition: opacity 175ms var(--motion-exit);
+}
+html.route-exiting .route-curtain {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* class is attached in <head>, before page CSS is loaded or painted */
+html.route-entering .route-curtain { opacity: 1; transition: none; }
+html.route-entering.route-ready .route-curtain {
+  opacity: 0;
+  transition: opacity 210ms var(--motion-enter);
+}
+/* Stateful hover: small distances, no rotations/scale overshoot. */
+@media (hover: hover) and (pointer: fine) {
+  .host-card, .srv-card {
+    transform: translate3d(0,0,0);
+    transition: transform 210ms var(--motion-standard),
+                background-color 200ms ease-out,
+                border-color 200ms ease-out,
+                box-shadow 210ms ease-out !important;
+  }
+  .host-card:is(:hover,:focus-visible), .srv-card:is(:hover,:focus-visible) {
+    transform: translate3d(0,-2px,0);
+    box-shadow: 0 7px 22px rgba(0,0,0,.16);
+  }
+  .host-card:active, .srv-card:active { transform: translate3d(0,0,0); }
+  .open-detail, .open-detail .bi, .host-card__name-line .bi {
+    transition: transform 200ms var(--motion-standard), color 200ms ease-out,
+                background-color 200ms ease-out;
+  }
+  .srv-card:hover .open-detail { transform: none; }
+  .srv-card:hover .open-detail .bi,
+  .host-card:hover .host-card__name-line .bi { transform: translate(1px,-1px); }
+  .nav-links a, .btn-action, .btn-icon, .range-selector button, .field-toggle,
+  .inventory-row {
+    transition: color 200ms ease-out, background-color 200ms ease-out,
+                border-color 200ms ease-out, box-shadow 200ms ease-out,
+                transform 200ms var(--motion-standard) !important;
+  }
+  .nav-links a:not(.on):hover { transform: translate3d(0,-1px,0); }
+  .btn-action:not(:disabled):hover, .btn-icon:not(:disabled):hover {
+    transform: translate3d(0,-1px,0);
+  }
+  .btn-action:not(:disabled):active, .btn-icon:not(:disabled):active {
+    transform: translate3d(0,0,0);
+  }
+}
+/* Centered modals use deceleration on arrival and a quicker standard exit. */
+.modal.fade .modal-dialog {
+  opacity: 0;
+  transform: translate3d(0,12px,0) scale(.985);
+  transition: transform 260ms var(--motion-enter), opacity 220ms ease-out !important;
+}
+.modal.show .modal-dialog { opacity: 1; transform: translate3d(0,0,0) scale(1); }
+.modal.fade:not(.show) .modal-dialog {
+  transition-duration: 175ms !important;
+  transition-timing-function: var(--motion-exit) !important;
+}
+.modal-backdrop.fade { transition: opacity 200ms ease-in-out; }
+/* Native scrolling is intentionally disabled so JS wheel damping is exclusive. */
+html { scroll-behavior: auto !important; }
+html:focus-within { scroll-behavior: auto !important; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; }
+  .route-curtain, .modal.fade .modal-dialog,
+  .host-card, .srv-card, .open-detail, .open-detail .bi,
+  .nav-links a, .btn-action, .btn-icon, .inventory-row {
+    transition: none !important;
+    animation: none !important;
+  }
+  html.route-entering .route-curtain, html.route-exiting .route-curtain { opacity: 0; pointer-events: none; }
+}

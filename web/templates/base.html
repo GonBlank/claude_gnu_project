@@ -5,13 +5,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101015">
   <script>
-    // Activar la entrada antes del primer pintado evita saltos entre páginas.
+    // Detectar el destino ANTES del primer pintado: evita un flash al navegar.
     try {
-      if (sessionStorage.getItem('snmp-navigation-pending') === '1') {
+      const pending = JSON.parse(sessionStorage.getItem('snmp-route') || 'null');
+      sessionStorage.removeItem('snmp-route');
+      if (pending && Date.now() - pending.ts < 15000 &&
+          pending.pathname === location.pathname && pending.search === location.search) {
         document.documentElement.classList.add('route-entering');
-        sessionStorage.removeItem('snmp-navigation-pending');
       }
-    } catch (_) { /* almacenamiento deshabilitado: animación base */ }
+    } catch (_) { /* almacenamiento no disponible: navegación convencional */ }
+    // Evitar que una falla de carga de JavaScript deje una pantalla opaca.
+    window.setTimeout(() => document.documentElement.classList.remove('route-entering', 'route-ready'), 1600);
   </script>
   <title>{% block title %}Panel{% endblock %} · SNMP Monitor</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%23506385'/%3E%3Cpath d='M5 8h14M5 12h10M5 16h14' stroke='%23F1F0E1' stroke-width='2'/%3E%3C/svg%3E">
@@ -22,6 +26,7 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
   {% block styles %}{% endblock %}
+  <link href="{{ url_for('static', filename='css/motion.css') }}" rel="stylesheet">
 </head>
 <body>
   <a class="skip-link" href="#mainContent">Saltar al contenido</a>
@@ -51,6 +56,9 @@
   </main>
   <footer class="container-xxl footer-bar"><span>SNMP MONITOR <span class="dim">/</span> INFRASTRUCTURE OBSERVABILITY</span><span>POWERED BY SNMP · MYSQL</span></footer>
   <div class="toast-container position-fixed bottom-0 end-0 p-3" id="toasts" aria-live="polite" aria-atomic="false"></div>
+  <div class="route-curtain" aria-hidden="true"></div>
+  <!-- El movimiento debe iniciarse aunque las librerías de terceros tarden en cargar. -->
+  <script src="{{ url_for('static', filename='js/motion.js') }}"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
   <script src="{{ url_for('static', filename='js/common.js') }}"></script>
