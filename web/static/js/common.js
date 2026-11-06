@@ -154,9 +154,11 @@ function navigateTo(href) {
     return;
   }
   pageNavigating = true;
+  // El nuevo documento inicia su fade-in ANTES del primer pintado (ver base.html).
+  try { sessionStorage.setItem('snmp-navigation-pending', '1'); } catch (_) {}
   const page = document.querySelector('.page');
   if (page) page.classList.add('is-leaving');
-  window.setTimeout(() => window.location.assign(destination.href), 150);
+  window.setTimeout(() => window.location.assign(destination.href), 225);
 }
 document.addEventListener('click', event => {
   if (event.defaultPrevented || event.button !== 0 || event.ctrlKey ||
@@ -188,3 +190,60 @@ function updateKpi(selector, value) {
     ], { duration: 210, easing: 'cubic-bezier(.16,1,.3,1)' });
   }
 }
+
+
+// Al finalizar el fade-in, limpiar la clase para futuras navegaciones.
+document.querySelector('.page')?.addEventListener('animationend', event => {
+  if (event.animationName === 'route-arrival') {
+    document.documentElement.classList.remove('route-entering');
+  }
+});
+
+/* El scroll-behavior CSS suaviza los saltos programáticos, pero NO la rueda.
+   Inercia ligera para rueda de ratón convencional; no se interceptan touchpads
+   de alta precisión, scrolls internos, modales ni usuarios con movimiento reducido. */
+(() => {
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+  let targetY = null;
+  let frame = 0;
+
+  function hasNestedScroll(node) {
+    for (let el = node; el && el !== document.documentElement; el = el.parentElement) {
+      if (el === document.body) break;
+      const computed = getComputedStyle(el);
+      if (/(auto|scroll)/.test(computed.overflowY) && el.scrollHeight > el.clientHeight + 3) {
+        return true;
+      }
+    }
+    return false;
+  }
+  function animateScroll() {
+    const current = window.scrollY;
+    const diff = targetY - current;
+    if (Math.abs(diff) < .7) {
+      window.scrollTo({ top: targetY, behavior: 'instant' });
+      frame = 0;
+      targetY = null;
+      return;
+    }
+    window.scrollTo({ top: current + diff * .24, behavior: 'instant' });
+    frame = requestAnimationFrame(animateScroll);
+  }
+  window.addEventListener('wheel', event => {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey ||
+        reducedMotion.matches || pageNavigating || event.deltaX !== 0 ||
+        event.target.closest('.modal, .table-responsive, select, textarea, [data-native-scroll]') ||
+        hasNestedScroll(event.target)) return;
+    const delta = event.deltaMode === 1 ? event.deltaY * 16 :
+      event.deltaMode === 2 ? event.deltaY * window.innerHeight : event.deltaY;
+    // Las pequeñas deltas en píxeles pertenecen generalmente a un trackpad.
+    if (event.deltaMode === 0 && Math.abs(delta) < 40) return;
+    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+    if (maxScroll <= 0) return;
+    event.preventDefault();
+    const base = targetY === null ? window.scrollY : targetY;
+    targetY = Math.max(0, Math.min(maxScroll, base + Math.max(-420, Math.min(420, delta))));
+    if (!frame) frame = requestAnimationFrame(animateScroll);
+  }, { passive: false });
+  window.addEventListener('pagehide', () => { if (frame) cancelAnimationFrame(frame); });
+})();

@@ -1,4 +1,5 @@
 import calendar
+import calendar
 import hmac
 import ipaddress
 import os
@@ -252,6 +253,34 @@ def api_overview():
 def api_servers():
     cfg = settings_typed()
     return jsonify(servers=[describe(s, cfg) for s in store.list_servers()], settings=cfg)
+
+
+
+@app.get("/api/servers/<int:sid>/availability")
+def api_server_availability(sid):
+    """48 intervalos de 30 min del host seleccionado (24 h).
+
+    1 = se recibió una medición, 0 = no se recibió desde su primera lectura,
+    None = todavía no hay historial. No equivale a un chequeo ICMP.
+    """
+    server = store.get_server(sid)
+    if not server:
+        return jsonify(error="El servidor no existe."), 404
+    end = utcnow()
+    start = end - timedelta(hours=24)
+    readings = store.metrics(sid, start)
+    bins = [None] * 48
+    if readings:
+        first = max(0, min(47, int((readings[0]["fecha"] - start).total_seconds() // BUCKET)))
+        bins[first:] = [0] * (48 - first)
+        for reading in readings:
+            idx = int((reading["fecha"] - start).total_seconds() // BUCKET)
+            if 0 <= idx < 48:
+                bins[idx] = 1
+    known = [value for value in bins if value is not None]
+    percentage = round(100 * sum(known) / len(known)) if known else None
+    return jsonify(availability=bins, availability_pct=percentage,
+                   start=to_ms(start), bucket_ms=BUCKET * 1000)
 
 
 @app.post("/api/servers")

@@ -158,6 +158,33 @@ function renderAverageChart(data) {
     ] });
   }
 }
+/* Mantener nodos estables: solo actualizar colores y textos de intervalos modificados. */
+function renderAvailability(data) {
+  const strip = $('#availabilityStrip');
+  if (strip.children.length !== 48) {
+    const segments = Array.from({ length: 48 }, () => {
+      const segment = document.createElement('span');
+      segment.className = 'availability-segment unknown';
+      return segment;
+    });
+    strip.replaceChildren(...segments);
+  }
+  data.availability.forEach((reading, index) => {
+    const segment = strip.children[index];
+    const state = reading === 1 ? 'up' : reading === 0 ? 'down' : 'unknown';
+    if (!segment.classList.contains(state)) segment.className = 'availability-segment ' + state;
+    const start = new Date(data.start + index * data.bucket_ms);
+    const time = start.toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    segment.title = time + ' · ' +
+      (state === 'up' ? 'Con mediciones' : state === 'down' ? 'Sin mediciones' : 'Sin datos previos');
+  });
+  const percentage = data.availability_pct;
+  $('#availabilityPercent').textContent = percentage == null
+    ? 'SIN HISTORIAL' : percentage + '% DE INTERVALOS CON MEDICIONES';
+  strip.setAttribute('aria-label', 'Últimas 24 horas: ' +
+    (percentage == null ? 'sin historial' : percentage + '% de intervalos con mediciones') +
+    '. Verde: con mediciones; rojo: sin mediciones; gris: datos no disponibles.');
+}
 function renderTable(records, settings) {
   const signature = JSON.stringify({ records, warn: settings.umbral_aviso, crit: settings.umbral_critico });
   if (signature === tableSignature) return;
@@ -204,9 +231,13 @@ async function load(trigger = null) {
     const rangeUrl = '/api/servers/' + serverId + '/metrics?range=' + encodeURIComponent(range);
     const primary = await api(rangeUrl);
     // El promedio de 24 h es EXCLUSIVO del host seleccionado, no global.
-    const lastDay = range === '24h' ? primary :
-      await api('/api/servers/' + serverId + '/metrics?range=24h');
+    const [lastDay, availability] = await Promise.all([
+      range === '24h' ? Promise.resolve(primary) :
+        api('/api/servers/' + serverId + '/metrics?range=24h'),
+      api('/api/servers/' + serverId + '/availability'),
+    ]);
     renderHeader(primary.server);
+    renderAvailability(availability);
     $('#detailError').classList.add('d-none');
     $('#detailContent').classList.remove('d-none');
     renderStats(primary.stats);

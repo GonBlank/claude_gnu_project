@@ -389,3 +389,131 @@ a:hover { color: var(--text); }
   .page, #serverGrid .col-12, .modal.fade .modal-dialog, .app-toast { animation: none !important; transition: none !important; }
   .page.is-leaving { opacity: 1; transform: none; }
 }
+
+
+/* Motion / UX tune-up · entrada/salida auténticas entre documentos.
+   Fase saliente más corta, fase entrante ease-out. Solo opacity/transform. */
+html.route-entering .page {
+  animation: route-arrival 340ms cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes route-arrival {
+  0% { opacity: 0; transform: translate3d(0,9px,0); }
+  100% { opacity: 1; transform: translate3d(0,0,0); }
+}
+.page {
+  transition: opacity 225ms cubic-bezier(.4,0,1,1),
+              transform 225ms cubic-bezier(.4,0,1,1);
+}
+.page.is-leaving {
+  animation: none !important;
+  opacity: 0;
+  transform: translate3d(0,-6px,0);
+}
+/* Navegación con movimiento corto: legible y sin overshoot llamativo. */
+@media (hover: hover) and (pointer: fine) {
+  .srv-card {
+    transform: translate3d(0,0,0);
+    transition: transform 280ms cubic-bezier(.16,1,.3,1),
+                box-shadow 260ms ease-out,
+                background-color 200ms ease-out,
+                border-color 200ms ease-out;
+  }
+  .srv-card:hover, .srv-card:focus-visible {
+    transform: translate3d(0,-3px,0);
+    box-shadow: 0 8px 26px rgba(0,0,0,.16);
+  }
+  .srv-card .open-detail {
+    transition: background-color 220ms ease-out, transform 280ms cubic-bezier(.16,1,.3,1);
+  }
+  .srv-card .open-detail .bi { transition: transform 280ms cubic-bezier(.16,1,.3,1); }
+  .srv-card:hover .open-detail .bi { transform: translate(2px,-2px); }
+  .btn:not(:disabled), .nav-links a, .inventory-row {
+    transition: transform 240ms cubic-bezier(.16,1,.3,1),
+                color 200ms ease-out,
+                background-color 200ms ease-out,
+                border-color 200ms ease-out,
+                box-shadow 200ms ease-out;
+  }
+}
+.srv-card:active { transform: translate3d(0,0,0) scale(.995) !important; }
+
+/* Formulario de configuración verdaderamente centrado, encabezado alineado. */
+.settings-head, .settings-panel {
+  width: 100%;
+  max-width: 760px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.settings-panel { margin-top: 0; }
+
+/* Ventanas modales de alta/edición/borrado: entrada y salida intencionales.
+   Bootstrap sigue controlando foco, backdrop y ciclo de vida. */
+#serverModal.modal.fade .modal-dialog,
+#deleteModal.modal.fade .modal-dialog {
+  opacity: 0;
+  transform: translate3d(0,22px,0) scale(.965);
+  transition: opacity 260ms ease-out,
+              transform 340ms cubic-bezier(.16,1,.3,1);
+  will-change: transform, opacity;
+}
+#serverModal.modal.show .modal-dialog,
+#deleteModal.modal.show .modal-dialog {
+  opacity: 1;
+  transform: translate3d(0,0,0) scale(1);
+}
+#serverModal.modal.fade:not(.show) .modal-dialog,
+#deleteModal.modal.fade:not(.show) .modal-dialog {
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(.4,0,1,1);
+}
+#serverModal.modal.fade, #deleteModal.modal.fade {
+  transition: opacity 260ms ease-in-out;
+}
+.modal-backdrop.fade { transition: opacity 260ms ease-in-out; }
+
+/* Historial de disponibilidad: 48 intervalos de 30 min, sin reflujo visual. */
+.availability-strip {
+  display: grid;
+  grid-template-columns: repeat(48,minmax(0,1fr));
+  gap: 3px;
+  height: 30px;
+  align-items: stretch;
+}
+.availability-segment {
+  display: block;
+  border-radius: 2px;
+  background: #393944;
+  transition: background-color 260ms ease-in-out, opacity 260ms ease-in-out;
+}
+.availability-segment.up { background: var(--green); }
+.availability-segment.down { background: var(--red); }
+.availability-segment.unknown { background: #474750; opacity: .52; }
+.availability-time {
+  display: flex; justify-content: space-between;
+  margin-top: .55rem;
+  font: .64rem "IBM Plex Mono",monospace;
+  color: var(--muted); letter-spacing: .04em;
+}
+.availability-legend {
+  display: flex; flex-wrap: wrap; gap: 1.15rem;
+  margin-top: 1rem;
+  font-size: .71rem; color: var(--muted);
+}
+.availability-legend span { display: inline-flex; align-items: center; gap: .4rem; }
+.legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 2px; }
+.legend-dot.up { background: var(--green); }
+.legend-dot.down { background: var(--red); }
+.legend-dot.unknown { background: #474750; }
+@media (max-width: 575px) {
+  .availability-strip { gap: 2px; height: 25px; }
+  .availability-legend { gap: .7rem; font-size: .67rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.route-entering .page, .page,
+  #serverModal.modal.fade .modal-dialog, #deleteModal.modal.fade .modal-dialog,
+  .availability-segment { animation: none !important; transition: none !important; }
+  .page.is-leaving { opacity: 1; transform: none; }
+  #serverModal.modal.show .modal-dialog, #deleteModal.modal.show .modal-dialog {
+    opacity: 1; transform: none;
+  }
+}

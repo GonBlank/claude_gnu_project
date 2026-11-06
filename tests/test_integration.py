@@ -156,6 +156,30 @@ class FlujoCompleto(DBTestCase):
         self.assertEqual(d["worker"]["status"], "late")
         self.assertEqual(d["kpis"]["down"], 1)
 
+    def test_disponibilidad_24h_en_detalle(self):
+        # Cada segmento refleja la presencia de mediciones del host, no del resto.
+        sid = self.add("ubuntu-availability", "10.0.0.41")
+        url = f"/api/servers/{sid}/availability"
+        empty = self.web.get(url)
+        self.assertEqual(empty.status_code, 200)
+        self.assertEqual(len(empty.get_json()["availability"]), 48)
+        self.assertTrue(all(v is None for v in empty.get_json()["availability"]))
+        self.assertIsNone(empty.get_json()["availability_pct"])
+
+        async def poller(_):
+            return good()
+
+        self.round(poller)
+        measured = self.web.get(url).get_json()
+        self.assertIn(1, measured["availability"])
+        self.assertEqual(measured["bucket_ms"], 1_800_000)
+        self.assertEqual(self.web.get("/api/servers/999999/availability").status_code, 404)
+
+        detail = self.web.get(f"/servers/{sid}")
+        self.assertIn(b'id="availabilityStrip"', detail.data)
+        self.assertIn(b'id="availabilityPercent"', detail.data)
+        self.assertNotIn(b'id="availabilityStrip"', self.web.get("/").data)
+
     def test_dashboard_compacto_y_navegacion_consistente(self):
         # Los tres KPI son el único resumen. No se exponen gráficas en el panel.
         page = self.web.get("/")

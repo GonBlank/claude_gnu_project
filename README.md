@@ -23,7 +23,8 @@ Servidores Ubuntu           ───────── Servidor controlador (do
 - **Panel:** muestra únicamente los KPI de servidores cargados, en línea y sin respuesta; las tarjetas sirven como acceso directo al detalle, sin métricas dispersas.
 - **Detalle por host:** clic en una tarjeta o fila de inventario para abrir `/servers/<id>`. Allí se encuentran las estadísticas CPU/RAM/disco, series históricas, promedio de 24 h del propio host y tabla de mediciones.
 - **UI/UX:** paleta oscura inspirada en Proto Mono, formularios con validación contextual, iconos, feedback de carga en acciones asíncronas y actualizaciones sin reconstruir las tarjetas.
-- **Interfaz compacta:** KPI y tarjetas reducidos, navegación con transiciones de 150–200 ms, efectos de entrada/salida con easing y gráficos actualizados solo ante cambios. Respeta `prefers-reduced-motion`; los indicadores de criticidad de recursos quedan en el detalle del host.
+- **Interfaz compacta y movimiento:** transiciones de navegación con salida y entrada animadas (también entre documentos), hover con easing, rueda de ratón suavizada sin interferir con trackpads ni el scroll interno, y modales con apertura/cierre suaves. Respeta `prefers-reduced-motion`.
+- **Disponibilidad por host:** el detalle incluye de nuevo la barra de las últimas 24 horas (48 segmentos de 30 minutos), con verde para intervalos con lecturas, rojo para intervalos sin lecturas y gris para períodos anteriores a la primera lectura. No representa pruebas ICMP.
 
 
 ## Levantar el servidor controlador
