@@ -225,6 +225,9 @@ def api_overview():
                     sums[i][0] += r["cpu"]
                     sums[i][1] += r["ram"]
                     sums[i][2] += 1
+        elif d["last"]:
+            # Ya se había medido este host: 24 horas sin lecturas no son "sin historial".
+            avail = [0] * nb
         known = [a for a in avail if a is not None]
         d["availability"] = avail
         d["availability_pct"] = round(100 * sum(known) / len(known)) if known else None
@@ -277,6 +280,9 @@ def api_server_availability(sid):
             idx = int((reading["fecha"] - start).total_seconds() // BUCKET)
             if 0 <= idx < 48:
                 bins[idx] = 1
+    elif store.last_metric(sid):
+        # Sin lecturas recientes, pero con historial previo: intervalos sin respuesta.
+        bins = [0] * 48
     known = [value for value in bins if value is not None]
     percentage = round(100 * sum(known) / len(known)) if known else None
     return jsonify(availability=bins, availability_pct=percentage,

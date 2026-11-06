@@ -156,8 +156,8 @@ class FlujoCompleto(DBTestCase):
         self.assertEqual(d["worker"]["status"], "late")
         self.assertEqual(d["kpis"]["down"], 1)
 
-    def test_disponibilidad_24h_en_detalle(self):
-        # Cada segmento refleja la presencia de mediciones del host, no del resto.
+    def test_disponibilidad_24h_en_resumen_de_host(self):
+        # Cada segmento refleja las mediciones del host en el dashboard.
         sid = self.add("ubuntu-availability", "10.0.0.41")
         url = f"/api/servers/{sid}/availability"
         empty = self.web.get(url)
@@ -176,9 +176,28 @@ class FlujoCompleto(DBTestCase):
         self.assertEqual(self.web.get("/api/servers/999999/availability").status_code, 404)
 
         detail = self.web.get(f"/servers/{sid}")
-        self.assertIn(b'id="availabilityStrip"', detail.data)
-        self.assertIn(b'id="availabilityPercent"', detail.data)
-        self.assertNotIn(b'id="availabilityStrip"', self.web.get("/").data)
+        self.assertNotIn(b'id="availabilityStrip"', detail.data)
+        home = self.web.get("/")
+        self.assertEqual(home.status_code, 200)
+        self.assertIn(b'id="serverGrid"', home.data)
+        self.assertIn(b'id="hostCount"', home.data)
+        self.assertIn(b'dashboard.css', home.data)
+        self.assertIn('Cada barra representa 30 minutos'.encode(), home.data)
+        self.assertNotIn(b'id="avgChart"', home.data)
+
+    def test_host_con_lecturas_antiguas_muestra_intervalos_sin_datos(self):
+        # Si hubo lecturas antes de la ventana, 24 h sin responder deben verse
+        # como intervalos conocidos sin mediciones y no como un host nuevo.
+        sid = self.add("ubuntu-stale", "10.0.0.42")
+        old = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None) - datetime.timedelta(days=2)
+        self.db.insert_metrics([(sid, old, 20, 40, 50, 86400)])
+        overview, by_name = self.overview()
+        host = by_name["ubuntu-stale"]
+        self.assertEqual(host["availability"], [0] * 48)
+        self.assertEqual(host["availability_pct"], 0)
+        summary = self.web.get(f"/api/servers/{sid}/availability").get_json()
+        self.assertEqual(summary["availability"], [0] * 48)
+        self.assertEqual(summary["availability_pct"], 0)
 
     def test_dashboard_compacto_y_navegacion_consistente(self):
         # Los tres KPI son el único resumen. No se exponen gráficas en el panel.

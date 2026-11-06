@@ -20,11 +20,11 @@ Servidores Ubuntu           ───────── Servidor controlador (do
 - **Los Ubuntu no envían nada:** el worker les pregunta. Solo necesitan `snmpd` y ser alcanzables por UDP 161 desde el controlador.
 - El worker y la web no se hablan entre sí: **MySQL es el punto de encuentro**. Lo que se cambia en la web (servidores, intervalo) el worker lo toma en la ronda siguiente.
 - Un servidor figura como *sin respuesta* si pasan más de dos intervalos sin una medición.
-- **Panel:** muestra únicamente los KPI de servidores cargados, en línea y sin respuesta; las tarjetas sirven como acceso directo al detalle, sin métricas dispersas.
+- **Panel:** muestra tres KPI (cargados, en línea y sin respuesta) y tarjetas de host con estado, última lectura y barra de disponibilidad de 24 h (48 intervalos de 30 minutos). Las tarjetas abren el detalle; CPU/RAM/disco no se dispersan por el panel.
 - **Detalle por host:** clic en una tarjeta o fila de inventario para abrir `/servers/<id>`. Allí se encuentran las estadísticas CPU/RAM/disco, series históricas, promedio de 24 h del propio host y tabla de mediciones.
 - **UI/UX:** paleta oscura inspirada en Proto Mono, formularios con validación contextual, iconos, feedback de carga en acciones asíncronas y actualizaciones sin reconstruir las tarjetas.
-- **Interfaz compacta y movimiento:** transiciones de navegación con salida y entrada animadas (también entre documentos), hover con easing, rueda de ratón suavizada sin interferir con trackpads ni el scroll interno, y modales con apertura/cierre suaves. Respeta `prefers-reduced-motion`.
-- **Disponibilidad por host:** el detalle incluye de nuevo la barra de las últimas 24 horas (48 segmentos de 30 minutos), con verde para intervalos con lecturas, rojo para intervalos sin lecturas y gris para períodos anteriores a la primera lectura. No representa pruebas ICMP.
+- **UI/UX:** dashboard visual compacto con superficies oscuras, acentos azul pizarra y crema; tarjetas con microinteracciones y actualización sin parpadeos. La rueda vertical se anima por `requestAnimationFrame` (sin doble suavizado CSS), con respeto por scrolls internos, teclado y `prefers-reduced-motion`. Los formularios y modales conservan sus estados de feedback.
+- **Disponibilidad en cada tarjeta:** verde = intervalo con lectura, rojo = intervalo conocido sin lectura, gris = sin historial suficiente. El porcentaje representa *intervalos conocidos con lecturas*, no una medición SLA/ICMP. El detalle concentra los gráficos e históricos del host.
 
 
 ## Levantar el servidor controlador

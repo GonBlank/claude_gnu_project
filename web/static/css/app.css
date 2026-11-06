@@ -31,7 +31,14 @@
   --bs-focus-ring-color: rgba(145, 164, 198, .35);
 }
 * { box-sizing: border-box; }
-html { scroll-behavior: smooth; }
+/* El scroll vertical se anima en common.js. Evitar el suavizado CSS simultáneo:
+   Firefox aplicaba dos motores y producía saltos al mover la rueda. */
+html { scroll-behavior: auto; scrollbar-color: #525c72 #101015; scrollbar-width: thin; }
+html:focus-within { scroll-behavior: auto; }
+::-webkit-scrollbar { width: 9px; height: 9px; }
+::-webkit-scrollbar-track { background: #101015; }
+::-webkit-scrollbar-thumb { background: #454f62; border: 2px solid #101015; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #6d80a0; }
 body {
   min-height: 100vh;
   background: var(--bg);

@@ -167,8 +167,15 @@ document.addEventListener('click', event => {
   if (!anchor || anchor.download || (anchor.target && anchor.target !== '_self')) return;
   const target = new URL(anchor.href);
   if (target.origin !== window.location.origin) return;
-  if (target.pathname === location.pathname && target.search === location.search &&
-      (target.hash || target.href === location.href)) return;
+  if (target.pathname === location.pathname && target.search === location.search) {
+    if (!target.hash) return;
+    const destination = document.getElementById(decodeURIComponent(target.hash.slice(1)));
+    if (!destination) return;
+    event.preventDefault();
+    history.pushState(null, '', target.href);
+    destination.scrollIntoView({ behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' });
+    return;
+  }
   event.preventDefault();
   navigateTo(target.href);
 });
@@ -199,51 +206,81 @@ document.querySelector('.page')?.addEventListener('animationend', event => {
   }
 });
 
-/* El scroll-behavior CSS suaviza los saltos programáticos, pero NO la rueda.
-   Inercia ligera para rueda de ratón convencional; no se interceptan touchpads
-   de alta precisión, scrolls internos, modales ni usuarios con movimiento reducido. */
+/* Scroll con inercia uniforme en Firefox, Chrome y navegadores Chromium.
+   CSS scroll-behavior:smooth no afecta la rueda. Aquí interceptamos TODOS los
+   eventos verticales (incluidas deltas pequeñas de VirtualBox/touchpad) y
+   desplazamos con requestAnimationFrame; sin mezclar dos motores de animación. */
 (() => {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-  let targetY = null;
-  let frame = 0;
+  const scroller = document.scrollingElement || document.documentElement;
+  let targetY = scroller.scrollTop;
+  let rafId = 0;
+  let lastFrame = 0;
 
-  function hasNestedScroll(node) {
-    for (let el = node; el && el !== document.documentElement; el = el.parentElement) {
-      if (el === document.body) break;
-      const computed = getComputedStyle(el);
-      if (/(auto|scroll)/.test(computed.overflowY) && el.scrollHeight > el.clientHeight + 3) {
-        return true;
-      }
+  const clamp = (value, low, high) => Math.max(low, Math.min(high, value));
+  const maxScroll = () => Math.max(0, scroller.scrollHeight - window.innerHeight);
+
+  function hasNestedScroller(node) {
+    for (let el = node; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+      if (!(el instanceof Element)) continue;
+      const style = window.getComputedStyle(el);
+      if (/(auto|scroll)/.test(style.overflowY) && el.scrollHeight > el.clientHeight + 2) return true;
     }
     return false;
   }
-  function animateScroll() {
-    const current = window.scrollY;
-    const diff = targetY - current;
-    if (Math.abs(diff) < .7) {
-      window.scrollTo({ top: targetY, behavior: 'instant' });
-      frame = 0;
-      targetY = null;
-      return;
+
+  function frame(now) {
+    if (!lastFrame) lastFrame = now;
+    const dt = clamp(now - lastFrame, 1, 45);
+    lastFrame = now;
+    targetY = clamp(targetY, 0, maxScroll());
+    const currentY = scroller.scrollTop;
+    // Amortiguación exponencial independiente del frame rate: ~100 ms de inercia.
+    const easing = 1 - Math.exp(-dt / 105);
+    const nextY = currentY + (targetY - currentY) * easing;
+    if (Math.abs(targetY - nextY) < .5) {
+      scroller.scrollTop = targetY;
+      rafId = 0;
+      lastFrame = 0;
+    } else {
+      scroller.scrollTop = nextY;
+      rafId = requestAnimationFrame(frame);
     }
-    window.scrollTo({ top: current + diff * .24, behavior: 'instant' });
-    frame = requestAnimationFrame(animateScroll);
   }
+
   window.addEventListener('wheel', event => {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.shiftKey ||
-        reducedMotion.matches || pageNavigating || event.deltaX !== 0 ||
-        event.target.closest('.modal, .table-responsive, select, textarea, [data-native-scroll]') ||
-        hasNestedScroll(event.target)) return;
-    const delta = event.deltaMode === 1 ? event.deltaY * 16 :
-      event.deltaMode === 2 ? event.deltaY * window.innerHeight : event.deltaY;
-    // Las pequeñas deltas en píxeles pertenecen generalmente a un trackpad.
-    if (event.deltaMode === 0 && Math.abs(delta) < 40) return;
-    const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-    if (maxScroll <= 0) return;
+    if (event.defaultPrevented || !event.cancelable || reducedMotion.matches ||
+        pageNavigating || event.ctrlKey || event.metaKey || event.shiftKey ||
+        Math.abs(event.deltaX) > Math.abs(event.deltaY) ||
+        event.target.closest('.modal, .table-responsive, select, textarea, input[type="number"], [data-native-scroll]') ||
+        hasNestedScroller(event.target)) return;
+    const limit = maxScroll();
+    if (limit < 1) return;
+    const step = event.deltaMode === 1 ? event.deltaY * 20 :
+      event.deltaMode === 2 ? event.deltaY * window.innerHeight :
+      event.deltaY * 1.15;
+    if (!Number.isFinite(step) || Math.abs(step) < .01) return;
     event.preventDefault();
-    const base = targetY === null ? window.scrollY : targetY;
-    targetY = Math.max(0, Math.min(maxScroll, base + Math.max(-420, Math.min(420, delta))));
-    if (!frame) frame = requestAnimationFrame(animateScroll);
+    if (!rafId) targetY = scroller.scrollTop;
+    targetY = clamp(targetY + clamp(step, -580, 580), 0, limit);
+    if (!rafId) {
+      lastFrame = 0;
+      rafId = requestAnimationFrame(frame);
+    }
   }, { passive: false });
-  window.addEventListener('pagehide', () => { if (frame) cancelAnimationFrame(frame); });
+
+  // Scroll nativo con teclado, barras, touch y accesibilidad no se intercepta.
+  // Al regresar a la página no arrastrar una posición de destino antigua.
+  const cancel = () => {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = 0;
+    lastFrame = 0;
+    targetY = scroller.scrollTop;
+  };
+  window.addEventListener('pagehide', cancel);
+  // Permitir que el usuario tome control inmediatamente con teclado o arrastre.
+  window.addEventListener('pointerdown', cancel, { passive: true });
+  window.addEventListener('keydown', cancel);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) cancel(); });
+  reducedMotion.addEventListener?.('change', cancel);
 })();
