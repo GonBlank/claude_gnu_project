@@ -1,139 +1,233 @@
+/* Inventario interactivo: detalle por host y acciones con feedback accesible. */
 const serverModal = new bootstrap.Modal($('#serverModal'));
 const deleteModal = new bootstrap.Modal($('#deleteModal'));
+const inventoryNodes = new Map();
 let servers = [];
-let defaults = { comunidad_default: 'public' };
+let defaults = { comunidad_default: '' };
 let pendingDelete = null;
-const revealed = new Set();
+let fetching = false;
+let editing = false;
+let deleting = false;
+const toggling = new Set();
 
-function row(s) {
-  const dotCls = s.status === 'online' ? 'ok' : s.status === 'sin_respuesta' ? 'crit' : '';
-  const community = revealed.has(s.id) ? esc(s.comunidad) : '&bull;&bull;&bull;&bull;&bull;&bull;';
-  return `<tr data-id="${s.id}">
-    <td><span class="dot ${dotCls}"></span>${STATUS[s.status]}</td>
-    <td><a class="srv-name" href="/history?server=${s.id}">${esc(s.hostname)}</a></td>
-    <td class="mono">${esc(s.ip)}</td>
-    <td class="mono">
-      ${community}
-      <button class="btn btn-link btn-sm p-0 ms-2 text-muted" data-act="reveal" aria-label="Mostrar u ocultar la community">
-        <i class="bi ${revealed.has(s.id) ? 'bi-eye-slash' : 'bi-eye'}"></i></button>
-    </td>
-    <td class="text-muted">${s.last ? fmtAgo(s.last.ts) : 'sin mediciones'}</td>
-    <td class="text-center">
-      <div class="form-check form-switch d-inline-block m-0">
-        <input class="form-check-input" type="checkbox" role="switch" data-act="toggle" ${s.enabled ? 'checked' : ''}
-               aria-label="Habilitar ${esc(s.hostname)}">
-      </div>
-    </td>
-    <td class="text-end text-nowrap">
-      <button class="btn btn-outline-secondary btn-icon" data-act="edit" aria-label="Editar ${esc(s.hostname)}"><i class="bi bi-pencil"></i></button>
-      <button class="btn btn-outline-danger btn-icon" data-act="delete" aria-label="Eliminar ${esc(s.hostname)}"><i class="bi bi-trash3"></i></button>
-    </td>
-  </tr>`;
+function newRow(id) {
+  const tr = document.createElement('tr');
+  tr.className = 'inventory-row';
+  tr.tabIndex = 0;
+  tr.dataset.id = String(id);
+  tr.innerHTML =
+    '<td><span class="dot"></span><span class="inventory-status"></span></td>' +
+    '<td><a class="inventory-name" href="/servers/' + encodeURIComponent(id) + '"></a></td>' +
+    '<td class="mono inventory-ip"></td>' +
+    '<td class="muted-cell inventory-updated"></td>' +
+    '<td class="text-center"><div class="d-inline-flex align-items-center gap-2">' +
+      '<div class="form-check form-switch m-0"><input type="checkbox" class="form-check-input" data-act="toggle" role="switch" aria-label="Habilitar monitoreo"></div>' +
+      '<span class="spinner-border spinner-border-sm switch-loader" role="status" aria-label="Actualizando" hidden></span>' +
+    '</div></td>' +
+    '<td class="text-end text-nowrap">' +
+      '<button type="button" class="btn btn-outline-secondary btn-icon me-1" data-act="edit" aria-label="Editar servidor" title="Editar"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>' +
+      '<button type="button" class="btn btn-outline-danger btn-icon" data-act="delete" aria-label="Eliminar servidor" title="Eliminar"><i class="bi bi-trash3" aria-hidden="true"></i></button>' +
+    '</td>';
+  return tr;
 }
-
-function render() {
-  $('#serversBody').innerHTML = servers.length
-    ? servers.map(row).join('')
-    : `<tr><td colspan="7"><div class="empty border-0"><strong>Todavía no hay servidores</strong>
-       Agregá el primero para que el worker empiece a consultarlo.</div></td></tr>`;
-}
-
-async function load() {
-  try {
-    const d = await api('/api/servers');
-    servers = d.servers;
-    defaults = d.settings;
-    render();
-  } catch (e) {
-    $('#serversBody').innerHTML = `<tr><td colspan="7" class="text-danger p-4">${esc(e.message)}</td></tr>`;
+function updateRow(tr, server) {
+  const dot = tr.querySelector('.dot');
+  dot.className = 'dot ' + (server.status === 'online' ? 'ok' : server.status === 'sin_respuesta' ? 'crit' : 'off');
+  tr.querySelector('.inventory-status').textContent = STATUS[server.status];
+  tr.querySelector('.inventory-name').textContent = server.hostname;
+  tr.querySelector('.inventory-ip').textContent = server.ip;
+  tr.querySelector('.inventory-updated').textContent = server.last ? fmtAgo(server.last.ts) : 'Sin mediciones';
+  tr.setAttribute('aria-label', 'Ver métricas de ' + server.hostname);
+  const toggle = tr.querySelector('[data-act="toggle"]');
+  if (!toggling.has(String(server.id))) toggle.checked = !!server.enabled;
+  toggle.setAttribute('aria-label', 'Monitoreo de ' + server.hostname);
+  for (const action of ['edit', 'delete']) {
+    tr.querySelector('[data-act="' + action + '"]').setAttribute(
+      'aria-label', (action === 'edit' ? 'Editar ' : 'Eliminar ') + server.hostname);
   }
 }
-
-function openForm(server) {
+function renderRows() {
+  const tbody = $('#serversBody');
+  if (!servers.length) {
+    inventoryNodes.clear();
+    tbody.innerHTML = '<tr><td colspan="6" class="table-empty">No hay servidores registrados. Agregá el primero para comenzar.</td></tr>';
+    return;
+  }
+  if (tbody.querySelector('.table-empty')) tbody.replaceChildren();
+  const active = new Set();
+  let position = 0;
+  for (const server of servers) {
+    const id = String(server.id);
+    active.add(id);
+    let tr = inventoryNodes.get(id);
+    if (!tr) { tr = newRow(id); inventoryNodes.set(id, tr); }
+    updateRow(tr, server);
+    if (tbody.children[position] !== tr) tbody.insertBefore(tr, tbody.children[position] || null);
+    position++;
+  }
+  for (const [id, tr] of inventoryNodes) {
+    if (!active.has(id)) { tr.remove(); inventoryNodes.delete(id); }
+  }
+}
+async function load() {
+  if (fetching) return;
+  fetching = true;
+  try {
+    const response = await api('/api/servers');
+    servers = response.servers;
+    defaults = response.settings;
+    renderRows();
+  } catch (error) {
+    if (!servers.length) $('#serversBody').innerHTML =
+      '<tr><td colspan="6" class="table-empty">No se pudo cargar el inventario.</td></tr>';
+    toast(error.message, 'error');
+  } finally { fetching = false; }
+}
+function clearErrors() {
   $('#formError').classList.add('d-none');
-  $('#serverModalTitle').textContent = server ? `Editar ${server.hostname}` : 'Agregar servidor';
+  for (const field of [$('#fHostname'), $('#fIp'), $('#fCommunity')]) setInvalid(field, false);
+}
+function openForm(server) {
+  if (editing) return;
+  clearErrors();
+  $('#serverModalTitle').textContent = server ? 'Editar servidor' : 'Agregar servidor';
   $('#fId').value = server ? server.id : '';
   $('#fHostname').value = server ? server.hostname : '';
   $('#fIp').value = server ? server.ip : '';
-  $('#fCommunity').value = server ? server.comunidad : defaults.comunidad_default;
+  const community = $('#fCommunity');
+  community.type = 'password';
+  $('#btnRevealCommunity').setAttribute('aria-pressed', 'false');
+  $('#btnRevealCommunity').setAttribute('aria-label', 'Mostrar community');
+  $('#btnRevealCommunity').innerHTML = '<i class="bi bi-eye" aria-hidden="true"></i>';
+  community.value = server ? server.comunidad : (defaults.comunidad_default || '');
   $('#fEnabled').checked = server ? server.enabled : true;
   serverModal.show();
 }
-
+function validIPv4(value) {
+  const parts = value.trim().split('.');
+  return parts.length === 4 && parts.every(part =>
+    /^\d{1,3}$/.test(part) && Number(part) >= 0 && Number(part) <= 255);
+}
+function validate() {
+  const hostname = $('#fHostname');
+  const ip = $('#fIp');
+  const community = $('#fCommunity');
+  const hostValid = /^[A-Za-z0-9]([A-Za-z0-9._-]{0,98}[A-Za-z0-9])?$/.test(hostname.value.trim());
+  const ipValid = validIPv4(ip.value);
+  const communityValid = !!community.value.trim() && community.value.trim().length <= 64;
+  setInvalid(hostname, !hostValid);
+  setInvalid(ip, !ipValid);
+  setInvalid(community, !communityValid);
+  if (!hostValid) hostname.focus();
+  else if (!ipValid) ip.focus();
+  else if (!communityValid) community.focus();
+  return hostValid && ipValid && communityValid;
+}
 $('#btnNew').addEventListener('click', () => openForm(null));
+$('#btnRevealCommunity').addEventListener('click', () => toggleSecret($('#btnRevealCommunity'), $('#fCommunity')));
 $('#serverModal').addEventListener('shown.bs.modal', () => $('#fHostname').focus());
-
-$('#btnSave').addEventListener('click', async () => {
+$$('#serverForm input:not([type="hidden"])').forEach(field => field.addEventListener('input', () => {
+  if (field.classList.contains('is-invalid')) setInvalid(field, false);
+}));
+$('#serverForm').addEventListener('submit', async event => {
+  event.preventDefault();
+  if (editing || !validate()) return;
+  editing = true;
+  const submit = $('#btnSave');
+  const dismiss = $$('#serverModal [data-bs-dismiss]');
+  dismiss.forEach(button => { button.disabled = true; });
+  setBusy(submit, true, 'Guardando...');
+  $('#formError').classList.add('d-none');
   const id = $('#fId').value;
   const body = {
-    hostname: $('#fHostname').value,
-    ip: $('#fIp').value,
-    comunidad: $('#fCommunity').value,
-    enabled: $('#fEnabled').checked,
+    hostname: $('#fHostname').value.trim(), ip: $('#fIp').value.trim(),
+    comunidad: $('#fCommunity').value.trim(), enabled: $('#fEnabled').checked,
   };
-  const btn = $('#btnSave');
-  btn.disabled = true;
   try {
-    const saved = await api(id ? `/api/servers/${id}` : '/api/servers', { method: id ? 'PUT' : 'POST', body });
+    const saved = await api(id ? '/api/servers/' + id : '/api/servers',
+      { method: id ? 'PUT' : 'POST', body });
     serverModal.hide();
-    toast(id ? `Cambios guardados en ${saved.hostname}.` : `${saved.hostname} agregado. Las mediciones aparecen cuando el worker lo consulte.`);
+    toast(id ? 'Cambios guardados en ' + saved.hostname : 'Servidor ' + saved.hostname + ' agregado');
     await load();
-  } catch (e) {
-    const box = $('#formError');
-    box.textContent = e.message;
-    box.classList.remove('d-none');
+  } catch (error) {
+    $('#formError').textContent = error.message;
+    $('#formError').classList.remove('d-none');
   } finally {
-    btn.disabled = false;
+    editing = false;
+    dismiss.forEach(button => { button.disabled = false; });
+    setBusy(submit, false);
   }
 });
-
-$('#serverModal').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.tagName === 'INPUT' && e.target.type !== 'checkbox') {
-    e.preventDefault();
-    $('#btnSave').click();
-  }
-});
-
-$('#serversBody').addEventListener('click', e => {
-  const btn = e.target.closest('[data-act]');
-  if (!btn || btn.dataset.act === 'toggle') return;
-  const id = Number(btn.closest('tr').dataset.id);
-  const s = servers.find(x => x.id === id);
-  if (btn.dataset.act === 'edit') openForm(s);
-  if (btn.dataset.act === 'reveal') { revealed.has(id) ? revealed.delete(id) : revealed.add(id); render(); }
-  if (btn.dataset.act === 'delete') {
-    pendingDelete = s;
-    $('#deleteText').textContent = `¿Eliminar ${s.hostname}? También se borra todo su histórico de mediciones.`;
+$('#serversBody').addEventListener('click', event => {
+  const tr = event.target.closest('tr[data-id]');
+  if (!tr) return;
+  const action = event.target.closest('[data-act]');
+  const server = servers.find(s => String(s.id) === tr.dataset.id);
+  if (!server) return;
+  if (action?.dataset.act === 'edit') { openForm(server); return; }
+  if (action?.dataset.act === 'delete') {
+    if (deleting) return;
+    pendingDelete = server;
+    $('#deleteText').textContent = '¿Eliminar ' + server.hostname + '? Se eliminará también todo su histórico.';
     deleteModal.show();
+    return;
+  }
+  if (event.target.closest('a, button, input, label, .form-check')) return;
+  location.assign('/servers/' + server.id);
+});
+$('#serversBody').addEventListener('keydown', event => {
+  const tr = event.target.closest('tr[data-id]');
+  if (tr && event.target === tr && (event.key === 'Enter' || event.key === ' ')) {
+    event.preventDefault();
+    location.assign('/servers/' + tr.dataset.id);
   }
 });
-
-$('#serversBody').addEventListener('change', async e => {
-  if (e.target.dataset.act !== 'toggle') return;
-  const id = Number(e.target.closest('tr').dataset.id);
-  const enabled = e.target.checked;
+$('#serversBody').addEventListener('change', async event => {
+  const toggle = event.target;
+  if (toggle.dataset.act !== 'toggle') return;
+  const tr = toggle.closest('tr[data-id]');
+  const id = tr.dataset.id;
+  if (toggling.has(id)) return;
+  toggling.add(id);
+  const enabled = toggle.checked;
+  const spinner = tr.querySelector('.switch-loader');
+  toggle.disabled = true;
+  spinner.hidden = false;
   try {
-    const s = await api(`/api/servers/${id}`, { method: 'PUT', body: { enabled } });
-    toast(`${s.hostname} ${enabled ? 'habilitado' : 'deshabilitado'}.`);
+    const response = await api('/api/servers/' + id, {
+      method: 'PUT', body: { enabled },
+    });
+    toast(response.hostname + (enabled ? ' habilitado' : ' deshabilitado'));
     await load();
-  } catch (err) {
-    e.target.checked = !enabled;
-    toast(err.message, 'error');
+  } catch (error) {
+    toggle.checked = !enabled;
+    toast(error.message, 'error');
+  } finally {
+    toggling.delete(id);
+    toggle.disabled = false;
+    spinner.hidden = true;
   }
 });
-
 $('#btnConfirmDelete').addEventListener('click', async () => {
-  if (!pendingDelete) return;
+  if (!pendingDelete || deleting) return;
+  deleting = true;
+  const button = $('#btnConfirmDelete');
+  const dismiss = $$('#deleteModal [data-bs-dismiss]');
+  dismiss.forEach(x => { x.disabled = true; });
+  setBusy(button, true, 'Eliminando...');
+  const name = pendingDelete.hostname;
   try {
-    await api(`/api/servers/${pendingDelete.id}`, { method: 'DELETE' });
-    toast(`${pendingDelete.hostname} eliminado.`);
+    await api('/api/servers/' + pendingDelete.id, { method: 'DELETE' });
     deleteModal.hide();
     pendingDelete = null;
+    toast(name + ' eliminado');
     await load();
-  } catch (e) {
-    toast(e.message, 'error');
+  } catch (error) { toast(error.message, 'error'); }
+  finally {
+    deleting = false;
+    dismiss.forEach(x => { x.disabled = false; });
+    setBusy(button, false);
   }
 });
-
 load();
 setInterval(load, 60000);

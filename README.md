@@ -20,6 +20,10 @@ Servidores Ubuntu           ───────── Servidor controlador (do
 - **Los Ubuntu no envían nada:** el worker les pregunta. Solo necesitan `snmpd` y ser alcanzables por UDP 161 desde el controlador.
 - El worker y la web no se hablan entre sí: **MySQL es el punto de encuentro**. Lo que se cambia en la web (servidores, intervalo) el worker lo toma en la ronda siguiente.
 - Un servidor figura como *sin respuesta* si pasan más de dos intervalos sin una medición.
+- **Panel:** muestra únicamente los KPI de servidores cargados, en línea y sin respuesta; las tarjetas sirven como acceso directo al detalle, sin métricas dispersas.
+- **Detalle por host:** clic en una tarjeta o fila de inventario para abrir `/servers/<id>`. Allí se encuentran las estadísticas CPU/RAM/disco, series históricas, promedio de 24 h del propio host y tabla de mediciones.
+- **UI/UX:** paleta oscura inspirada en Proto Mono, formularios con validación contextual, iconos, feedback de carga en acciones asíncronas y actualizaciones sin reconstruir las tarjetas.
+
 
 ## Levantar el servidor controlador
 

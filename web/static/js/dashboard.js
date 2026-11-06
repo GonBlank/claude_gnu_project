@@ -1,139 +1,94 @@
-const chart = makeChart($('#avgChart'));
+/* El panel es solo estado: las métricas viven en el detalle de cada host. */
 const REFRESH_MS = 60000;
+let isFetching = false;
+const hostNodes = new Map();
 
-function meter(label, value, cfg) {
-  if (value == null) {
-    return `<div class="meter-row"><span>${label}</span><div class="meter"></div><span class="val text-muted" title="El agente no informa este dato">n/d</span></div>`;
+function newHostCard(id) {
+  const column = document.createElement('div');
+  column.className = 'col-12 col-md-6 col-xl-4';
+  column.innerHTML = '<a class="srv-card" href="/servers/' + encodeURIComponent(id) + '">' +
+    '<div class="srv-card-head"><span class="srv-card-icon"><i class="bi bi-hdd-network" aria-hidden="true"></i></span>' +
+    '<span class="status-pill"></span></div>' +
+    '<div class="srv-card-body"><h3 class="srv-name"></h3><p class="srv-ip"></p></div>' +
+    '<div class="srv-card-foot"><span class="card-updated"><i class="bi bi-clock-history" aria-hidden="true"></i> <span></span></span>' +
+    '<span class="open-detail"><i class="bi bi-arrow-up-right" aria-hidden="true"></i></span></div></a>';
+  return column;
+}
+function updateHostCard(column, server) {
+  const card = column.querySelector('.srv-card');
+  const sev = server.status === 'online' ? server.severity :
+    server.status === 'sin_respuesta' ? 'crit' : 'off';
+  card.className = 'srv-card sev-' + sev;
+  card.setAttribute('aria-label', 'Ver detalle de ' + server.hostname + '. Estado: ' + STATUS[server.status]);
+  const status = column.querySelector('.status-pill');
+  status.className = 'status-pill st-' + server.status;
+  const icons = { online: 'bi-check-circle', sin_respuesta: 'bi-exclamation-circle',
+    deshabilitado: 'bi-pause-circle', sin_datos: 'bi-dash-circle' };
+  status.innerHTML = '<i class="bi ' + icons[server.status] + '" aria-hidden="true"></i> ';
+  status.append(document.createTextNode(STATUS[server.status]));
+  column.querySelector('.srv-name').textContent = server.hostname;
+  column.querySelector('.srv-ip').textContent = server.ip;
+  column.querySelector('.card-updated span').textContent = server.last ? fmtAgo(server.last.ts) : 'Sin mediciones';
+}
+function renderHosts(servers) {
+  const grid = $('#serverGrid');
+  if (!servers.length) {
+    hostNodes.clear();
+    grid.innerHTML = '<div class="col-12"><div class="empty"><i class="bi bi-hdd-stack" aria-hidden="true"></i><strong>Sin servidores registrados</strong>Agregá el primero desde <a href="/servers">Servidores</a>.</div></div>';
+    return;
   }
-  const lvl = level(value, cfg);
-  return `<div class="meter-row">
-    <span>${label}</span>
-    <div class="meter" role="meter" aria-label="${label}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${value}"><i class="${lvl}" style="width:${value}%"></i></div>
-    <span class="val">${value.toFixed(0)}%</span>
-  </div>`;
-}
-
-function availability(s, bucketMs, startMs) {
-  const cells = s.availability.map((a, i) => {
-    const from = new Date(startMs + i * bucketMs).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-    const cls = a === 1 ? 'up' : a === 0 ? 'down' : '';
-    const txt = a === 1 ? 'con mediciones' : a === 0 ? 'sin mediciones' : 'sin datos';
-    return `<i class="${cls}" title="${from}: ${txt}"></i>`;
-  }).join('');
-  const label = s.availability_pct == null ? 'Sin datos todavía' : `${s.availability_pct}% disponible`;
-  return `<div>
-    <div class="avail" aria-hidden="true">${cells}</div>
-    <div class="avail-cap"><span>hace 24 h</span><span>${label}</span><span>ahora</span></div>
-  </div>`;
-}
-
-function card(s, cfg, d) {
-  const st = s.status;
-  const sev = st === 'online' ? s.severity : st === 'sin_respuesta' ? 'crit' : 'off';
-  const stale = st !== 'online';
-  const last = s.last;
-  let body;
-  if (last) {
-    body = `<div class="meters">
-      ${meter('CPU', last.cpu, cfg)}${meter('RAM', last.ram, cfg)}${meter('Disco', last.disco, cfg)}
-    </div>
-    <div class="srv-meta">
-      <span>Encendido hace ${fmtUptime(last.uptime)}</span>
-      <span>Lectura ${fmtAgo(last.ts)}</span>
-    </div>`;
-  } else {
-    body = `<div class="srv-meta"><span>Todavía no hay mediciones. El worker las guardará en su próxima ronda.</span></div>`;
+  // Mantener las mismas tarjetas evita parpadeos cada 60 segundos.
+  if (grid.querySelector('.empty')) grid.replaceChildren();
+  const existing = new Set();
+  let position = 0;
+  for (const server of servers) {
+    const id = String(server.id);
+    existing.add(id);
+    let column = hostNodes.get(id);
+    if (!column) {
+      column = newHostCard(id);
+      hostNodes.set(id, column);
+    }
+    updateHostCard(column, server);
+    if (grid.children[position] !== column) grid.insertBefore(column, grid.children[position] || null);
+    position++;
   }
-  const note = st === 'sin_respuesta'
-    ? `<div class="stale-note"><i class="bi bi-exclamation-circle"></i> Mostrando el último valor conocido.</div>` : '';
-  return `<div class="col-md-6 col-xl-4">
-    <article class="srv-card sev-${sev} ${stale ? 'stale' : ''}">
-      <div class="srv-top">
-        <div>
-          <a class="srv-name" href="/history?server=${s.id}">${esc(s.hostname)}</a>
-          <div class="srv-ip">${esc(s.ip)}</div>
-        </div>
-        <span class="badge-st st-${st}">${STATUS[st]}</span>
-      </div>
-      ${body}${note}
-      ${s.enabled ? availability(s, d.bucket_ms, d.start) : ''}
-    </article>
-  </div>`;
-}
-
-function renderWorker(w) {
-  const el = $('#workerBar');
-  if (!w) { el.className = 'd-none'; return; }
-  let text, cls;
-  if (w.status === 'ok') {
-    cls = 'worker-ok';
-    const r = w.result ? ` (respondieron ${w.result.replace('/', ' de ')} servidores)` : '';
-    text = `<i class="bi bi-check-circle"></i> Worker activo: última ronda ${fmtAgo(w.last_ts)}${r}.`;
-  } else if (w.status === 'late') {
-    cls = 'worker-late';
-    text = `<i class="bi bi-exclamation-triangle"></i> El worker no registra actividad desde ${fmtAgo(w.last_ts)}. Los estados que ves pueden estar desactualizados (revisá <span class="mono">./start.sh logs worker</span>).`;
-  } else {
-    cls = 'worker-never';
-    text = `<i class="bi bi-hourglass-split"></i> El worker todavía no completó ninguna ronda.`;
+  for (const [id, element] of hostNodes) {
+    if (!existing.has(id)) { element.remove(); hostNodes.delete(id); }
   }
-  el.className = `worker-bar ${cls}`;
-  el.innerHTML = text;
 }
-
-function renderKpis(k) {
-  $('#kActive').textContent = k.enabled;
-  $('#kActiveSub').textContent = `de ${k.total} registrados`;
-  $('#kOnline').textContent = k.online;
-  $('#kOnlineSub').textContent = k.alerts ? `${k.alerts} con valores altos` : 'todos dentro de los umbrales';
-  $('#kDown').textContent = k.down;
-  $('#kDownSub').textContent = k.down ? 'revisar red o snmpd' : 'ninguno caído';
-  $('#kCpu').textContent = k.cpu_avg == null ? '-' : `${k.cpu_avg}%`;
-  $('#kCpuSub').textContent = 'entre los servidores en línea';
+function renderWorker(worker) {
+  const bar = $('#workerBar');
+  if (!worker || worker.status === 'ok') {
+    bar.className = 'd-none';
+    return;
+  }
+  bar.className = 'worker-bar ' + (worker.status === 'late' ? 'worker-late' : 'worker-never');
+  bar.textContent = worker.status === 'late'
+    ? 'El worker dejó de registrar actividad. Los estados pueden estar desactualizados.'
+    : 'El worker todavía no completó ninguna ronda.';
 }
-
-function renderChart(d) {
-  const base = chartBase();
-  chart.setOption({
-    ...base,
-    series: [
-      {
-        name: 'CPU promedio', type: 'line', data: d.series.cpu, smooth: true, showSymbol: false,
-        lineStyle: { width: 2, color: COLORS.blue }, itemStyle: { color: COLORS.blue },
-        areaStyle: { color: 'rgba(125,180,234,.12)' },
-        markLine: {
-          silent: true, symbol: 'none', label: { color: COLORS.muted, formatter: '{b}', position: 'insideEndTop' },
-          data: [
-            { yAxis: d.settings.umbral_aviso, name: 'aviso', lineStyle: { color: COLORS.amber, type: 'dashed', opacity: .7 } },
-            { yAxis: d.settings.umbral_critico, name: 'crítico', lineStyle: { color: COLORS.red, type: 'dashed', opacity: .7 } },
-          ],
-        },
-      },
-      {
-        name: 'RAM promedio', type: 'line', data: d.series.ram, smooth: true, showSymbol: false,
-        lineStyle: { width: 2, color: COLORS.purple }, itemStyle: { color: COLORS.purple },
-      },
-    ],
-  }, true);
-}
-
-async function load() {
+async function load(manual = false) {
+  if (isFetching) return;
+  isFetching = true;
+  const refresh = $('#btnRefresh');
+  if (manual) setBusy(refresh, true, 'Actualizando...');
   try {
-    const d = await api('/api/overview');
-    renderWorker(d.worker);
-    renderKpis(d.kpis);
-    const grid = $('#serverGrid');
-    grid.innerHTML = d.servers.length
-      ? d.servers.map(s => card(s, d.settings, d)).join('')
-      : `<div class="col-12"><div class="empty"><strong>Todavía no hay servidores</strong>
-         Agregá el primero desde <a href="/servers">Servidores</a> para empezar a monitorearlo.</div></div>`;
-    renderChart(d);
-    $('#lastUpdate').textContent = `Actualizado ${new Date().toLocaleTimeString('es-AR')}`;
-  } catch (e) {
+    const data = await api('/api/overview');
+    $('#kTotal').textContent = data.kpis.total;
+    $('#kOnline').textContent = data.kpis.online;
+    $('#kDown').textContent = data.kpis.down;
+    renderWorker(data.worker);
+    renderHosts(data.servers);
+    $('#lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR');
+  } catch (error) {
     $('#lastUpdate').textContent = 'No se pudo actualizar';
-    toast(e.message, 'error');
+    if (manual) toast(error.message, 'error');
+  } finally {
+    isFetching = false;
+    if (manual) setBusy(refresh, false);
   }
 }
-
-$('#btnRefresh').addEventListener('click', load);
+$('#btnRefresh').addEventListener('click', () => load(true));
 load();
-setInterval(load, REFRESH_MS);
+setInterval(() => load(), REFRESH_MS);

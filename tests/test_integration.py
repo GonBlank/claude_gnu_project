@@ -156,6 +156,26 @@ class FlujoCompleto(DBTestCase):
         self.assertEqual(d["worker"]["status"], "late")
         self.assertEqual(d["kpis"]["down"], 1)
 
+    def test_vista_detalle_y_redireccion_historico(self):
+        # El panel solo ofrece los tres KPI; el detalle concentra los gráficos.
+        home = self.web.get("/")
+        self.assertEqual(home.status_code, 200)
+        self.assertIn(b'id="kTotal"', home.data)
+        self.assertIn(b'id="kOnline"', home.data)
+        self.assertIn(b'id="kDown"', home.data)
+        self.assertNotIn(b'id="avgChart"', home.data)
+
+        detail = self.web.get("/servers/42")
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn(b'id="histChart"', detail.data)
+        self.assertIn(b'id="avgChart"', detail.data)
+        self.assertIn(b'id="latestBody"', detail.data)
+
+        old = self.web.get("/history?server=42")
+        self.assertEqual(old.status_code, 302)
+        self.assertTrue(old.location.endswith("/servers/42"))
+        self.assertTrue(self.web.get("/history").location.endswith("/servers"))
+
     def test_validaciones(self):
         self.add("ubuntu-01", "10.0.0.1")
         bad_ip = self.web.post("/api/servers", json={"hostname": "x", "ip": "999.1.1.1", "comunidad": "p"})

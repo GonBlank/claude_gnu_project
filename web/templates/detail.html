@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Detalle de servidor{% endblock %}
+{% block content %}
+<div id="serverDetail" data-server-id="{{ server_id }}">
+  <nav class="breadcrumb-strip" aria-label="Ruta de navegación"><a href="{{ url_for('page_dashboard') }}"><i class="bi bi-grid-1x2" aria-hidden="true"></i> Panel</a><i class="bi bi-chevron-right" aria-hidden="true"></i><a href="{{ url_for('page_servers') }}">Servidores</a><i class="bi bi-chevron-right" aria-hidden="true"></i><span id="breadServer">Detalle</span></nav>
+  <header class="page-head detail-head">
+    <div>
+      <div class="eyebrow"><span class="eyebrow-line"></span> ASSET / SERVER DETAIL</div>
+      <div class="detail-title-row"><h1 id="detailName">Servidor</h1><span class="status-pill st-sin_datos" id="detailStatus"><i class="bi bi-circle" aria-hidden="true"></i> Sin datos</span></div>
+      <p class="lead-sm"><span class="mono" id="detailIp">—</span><span class="detail-separator">·</span><span id="detailLast">Esperando datos...</span></p>
+    </div>
+    <div class="head-actions">
+      <a class="btn btn-outline-secondary btn-action" href="{{ url_for('page_servers') }}"><i class="bi bi-arrow-left" aria-hidden="true"></i><span>Volver</span></a>
+      <button class="btn btn-primary btn-action" id="btnDetailRefresh" type="button"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i><span>Actualizar</span></button>
+    </div>
+  </header>
+  <div id="detailError" class="empty d-none" role="alert"></div>
+  <div id="detailContent">
+    <section class="mb-4" aria-labelledby="statsHeading">
+      <div class="section-header">
+        <div><div class="eyebrow">RESOURCE / PERFORMANCE</div><h2 id="statsHeading">Estadísticas del servidor</h2></div>
+        <div id="rangeGroup" class="range-selector" role="group" aria-label="Período de análisis">
+          <button type="button" data-range="1h"><i class="bi bi-clock" aria-hidden="true"></i> 1 h</button>
+          <button type="button" data-range="6h"><i class="bi bi-clock-history" aria-hidden="true"></i> 6 h</button>
+          <button type="button" data-range="24h" class="active" aria-pressed="true"><i class="bi bi-calendar-day" aria-hidden="true"></i> 24 h</button>
+          <button type="button" data-range="7d"><i class="bi bi-calendar-week" aria-hidden="true"></i> 7 días</button>
+        </div>
+      </div>
+      <div class="row g-3" id="statsRow">
+        <div class="col-12"><div class="empty">Cargando estadísticas...</div></div>
+      </div>
+    </section>
+    <section class="panel mb-4" aria-labelledby="chartTitle">
+      <div class="panel-head">
+        <div><div class="eyebrow">TELEMETRY / TIME SERIES</div><h2 id="chartTitle">Uso en el tiempo</h2></div>
+        <span class="meta-small" id="chartMeta"></span>
+      </div>
+      <div class="panel-body">
+        <div id="histChart" class="chart chart-lg" role="img" aria-label="Gráfico de CPU, RAM y disco del servidor"></div>
+        <p id="histNoData" class="empty d-none">Todavía no hay mediciones para este período.</p>
+      </div>
+    </section>
+    <section class="panel mb-4" aria-labelledby="avgTitle">
+      <div class="panel-head">
+        <div><div class="eyebrow">HOST / 24 HOURS</div><h2 id="avgTitle">Uso promedio de las últimas 24 horas</h2></div>
+        <span class="meta-small">CPU Y RAM · SOLO ESTE HOST · PROMEDIOS CADA 30 MIN</span>
+      </div>
+      <div class="panel-body"><div id="avgChart" class="chart chart-md" role="img" aria-label="Uso promedio de CPU y RAM del host en las últimas 24 horas"></div></div>
+    </section>
+    <section class="panel" aria-labelledby="latestHeading">
+      <div class="panel-head">
+        <div><div class="eyebrow">TELEMETRY / LOG</div><h2 id="latestHeading">Últimas mediciones</h2></div>
+        <span class="meta-small">MÁS RECIENTES PRIMERO</span>
+      </div>
+      <div class="table-responsive"><table class="table table-sm align-middle mb-0">
+        <thead><tr><th>Fecha</th><th class="text-end">CPU</th><th class="text-end">RAM</th><th class="text-end">Disco</th><th class="text-end">Uptime</th></tr></thead>
+        <tbody id="latestBody"><tr><td colspan="5" class="table-empty">Cargando...</td></tr></tbody>
+      </table></div>
+    </section>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/detail.js') }}"></script>
+{% endblock %}

@@ -5,7 +5,7 @@ import os
 import re
 from datetime import timedelta
 
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, redirect, url_for
 
 import store as store_mod
 from store import DBUnavailable, DEFAULT_SETTINGS, utcnow
@@ -167,9 +167,19 @@ def page_servers():
     return render_template("servers.html", active="servers")
 
 
+@app.get("/servers/<int:sid>")
+def page_detail(sid):
+    """Vista ampliada de un host; las métricas se cargan mediante la API."""
+    return render_template("detail.html", active="servers", server_id=sid)
+
+
 @app.get("/history")
 def page_history():
-    return render_template("history.html", active="history")
+    """Redirigir enlaces históricos a la nueva vista individual."""
+    sid = request.args.get("server", type=int)
+    if sid is None:
+        return redirect(url_for("page_servers"))
+    return redirect(url_for("page_detail", sid=sid))
 
 
 @app.get("/settings")

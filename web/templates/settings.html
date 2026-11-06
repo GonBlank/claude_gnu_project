@@ -2,55 +2,56 @@
 {% block title %}Configuración{% endblock %}
 {% block content %}
 <header class="page-head">
-  <div>
-    <h1>Configuración</h1>
-    <p class="lead-sm">Parámetros del monitoreo. Se guardan en la tabla <span class="mono">settings</span>.</p>
+  <div><div class="eyebrow"><span class="eyebrow-line"></span> SYSTEM / CONFIGURATION</div>
+    <h1>Configuración<span class="accent-dot">.</span></h1><p class="lead-sm">Ajustá el comportamiento y los umbrales del monitoreo.</p>
   </div>
 </header>
-
-<section class="panel panel-amber" style="max-width: 760px;">
-  <div class="panel-head"><h2>Monitoreo</h2></div>
+<section class="panel settings-panel" aria-labelledby="settingsTitle">
+  <div class="panel-head"><div><div class="eyebrow">WORKER / SETTINGS</div><h2 id="settingsTitle">Parámetros de monitoreo</h2></div><i class="bi bi-sliders2 panel-icon" aria-hidden="true"></i></div>
   <div class="panel-body">
-    <div class="alert alert-danger py-2 d-none" id="settingsError" role="alert"></div>
+    <div class="alert alert-danger d-none" id="settingsError" role="alert"></div>
     <form id="settingsForm" novalidate>
+      <div class="form-section-title">01 / RECOLECCIÓN Y RETENCIÓN</div>
       <div class="row g-3">
-        <div class="col-sm-6">
-          <label for="sInterval" class="form-label">Intervalo de consulta (minutos)</label>
-          <input type="number" class="form-control" id="sInterval" min="1" max="60" required>
+        <div class="col-md-6">
+          <label class="form-label" for="sInterval">Intervalo de consulta (minutos)</label>
+          <div class="input-wrap"><i class="bi bi-clock-history" aria-hidden="true"></i><input id="sInterval" type="number" min="1" max="60" class="form-control" required><span class="input-suffix">MIN</span></div>
+          <div class="invalid-feedback">Elegí un intervalo entre 1 y 60 minutos.</div>
         </div>
-        <div class="col-sm-6">
-          <label for="sRetention" class="form-label">Retención del histórico (días)</label>
-          <input type="number" class="form-control" id="sRetention" min="1" max="365" required>
+        <div class="col-md-6">
+          <label class="form-label" for="sRetention">Retención del histórico (días)</label>
+          <div class="input-wrap"><i class="bi bi-archive" aria-hidden="true"></i><input id="sRetention" type="number" min="1" max="365" class="form-control" required><span class="input-suffix">DÍAS</span></div>
+          <div class="invalid-feedback">Elegí entre 1 y 365 días.</div>
         </div>
-        <div class="col-12 form-text mt-1">
-          Un servidor figura como sin respuesta cuando pasan más de dos intervalos sin una medición nueva.
-        </div>
-        <div class="col-sm-6">
-          <label for="sWarn" class="form-label">Umbral de aviso (%)</label>
-          <input type="number" class="form-control" id="sWarn" min="1" max="99" required>
-        </div>
-        <div class="col-sm-6">
-          <label for="sCrit" class="form-label">Umbral crítico (%)</label>
-          <input type="number" class="form-control" id="sCrit" min="2" max="100" required>
-        </div>
-        <div class="col-12 form-text mt-1">
-          Se aplican a CPU, RAM y disco: las barras y los avisos cambian de color al superarlos.
-        </div>
-        <div class="col-12">
-          <label for="sCommunity" class="form-label">Community por defecto</label>
-          <input type="text" class="form-control mono" id="sCommunity" maxlength="64" required>
-          <div class="form-text">Se propone al agregar un servidor nuevo.</div>
-        </div>
+        <div class="col-12"><p class="helper-note"><i class="bi bi-info-circle" aria-hidden="true"></i> Un host se considera sin respuesta cuando transcurren más de dos intervalos sin mediciones.</p></div>
       </div>
-      <div class="mt-4 d-flex gap-2">
-        <button type="submit" class="btn btn-warning" id="btnSaveSettings">Guardar cambios</button>
-        <button type="button" class="btn btn-outline-secondary" id="btnReload">Descartar</button>
+      <div class="form-section-title mt-4">02 / UMBRALES DE ALERTA</div>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <label class="form-label" for="sWarn">Umbral de aviso (%)</label>
+          <div class="input-wrap"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><input id="sWarn" type="number" min="1" max="99" class="form-control" required><span class="input-suffix">%</span></div>
+          <div class="invalid-feedback">Ingresá un valor entre 1 y 99.</div>
+        </div>
+        <div class="col-md-6">
+          <label class="form-label" for="sCrit">Umbral crítico (%)</label>
+          <div class="input-wrap"><i class="bi bi-exclamation-octagon" aria-hidden="true"></i><input id="sCrit" type="number" min="2" max="100" class="form-control" required><span class="input-suffix">%</span></div>
+          <div class="invalid-feedback">Debe superar al aviso y no exceder 100%.</div>
+        </div>
+        <div class="col-12"><p class="helper-note"><i class="bi bi-info-circle" aria-hidden="true"></i> Los indicadores de CPU, RAM y disco reflejan estos valores.</p></div>
+      </div>
+      <div class="form-section-title mt-4">03 / SNMP</div>
+      <div class="mb-3">
+        <label class="form-label" for="sCommunity">Community predeterminada</label>
+        <div class="input-wrap"><i class="bi bi-shield-lock" aria-hidden="true"></i><input id="sCommunity" type="password" class="form-control mono input-with-trailing" maxlength="64" required autocomplete="new-password"><button type="button" id="btnRevealDefault" class="field-toggle" aria-label="Mostrar community" aria-pressed="false"><i class="bi bi-eye" aria-hidden="true"></i></button></div>
+        <div class="invalid-feedback">La community no puede estar vacía.</div>
+        <div class="form-text">Se propone automáticamente cuando agregás un host nuevo.</div>
+      </div>
+      <div class="form-actions">
+        <button id="btnReload" type="button" class="btn btn-outline-secondary btn-action"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i><span>Descartar cambios</span></button>
+        <button id="btnSaveSettings" type="submit" class="btn btn-primary btn-action"><i class="bi bi-check2" aria-hidden="true"></i><span>Guardar configuración</span></button>
       </div>
     </form>
   </div>
 </section>
 {% endblock %}
-
-{% block scripts %}
-<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
-{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/settings.js') }}"></script>{% endblock %}

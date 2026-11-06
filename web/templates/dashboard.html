@@ -3,39 +3,42 @@
 {% block content %}
 <header class="page-head">
   <div>
-    <h1>Panel</h1>
-    <p class="lead-sm">Estado de los servidores Ubuntu consultados por SNMP.</p>
+    <div class="eyebrow"><span class="eyebrow-line"></span> SYSTEM / OVERVIEW</div>
+    <h1>Panel de monitoreo<span class="accent-dot">.</span></h1>
+    <p class="lead-sm">Estado de tus servidores · información actualizada automáticamente.</p>
   </div>
-  <div class="d-flex align-items-center gap-3">
-    <span class="text-muted small" id="lastUpdate">Cargando...</span>
-    <button class="btn btn-sm btn-outline-info" id="btnRefresh"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+  <div class="head-actions">
+    <span class="refresh-note" id="lastUpdate" aria-live="polite">Sincronizando...</span>
+    <button class="btn btn-outline-secondary btn-action" id="btnRefresh" type="button" aria-label="Actualizar estado">
+      <i class="bi bi-arrow-clockwise" aria-hidden="true"></i><span>Actualizar</span>
+    </button>
   </div>
 </header>
-
-<div id="workerBar" class="d-none" role="status"></div>
-
-<section class="row g-3 mb-4" aria-label="Resumen">
-  <div class="col-6 col-lg-3"><div class="kpi kpi-blue"><span class="kpi-label">Servidores activos</span><strong id="kActive">-</strong><span class="kpi-sub" id="kActiveSub">&nbsp;</span></div></div>
-  <div class="col-6 col-lg-3"><div class="kpi kpi-green"><span class="kpi-label">En línea</span><strong id="kOnline">-</strong><span class="kpi-sub" id="kOnlineSub">&nbsp;</span></div></div>
-  <div class="col-6 col-lg-3"><div class="kpi kpi-red"><span class="kpi-label">Sin respuesta</span><strong id="kDown">-</strong><span class="kpi-sub" id="kDownSub">&nbsp;</span></div></div>
-  <div class="col-6 col-lg-3"><div class="kpi kpi-amber"><span class="kpi-label">CPU promedio ahora</span><strong id="kCpu">-</strong><span class="kpi-sub" id="kCpuSub">&nbsp;</span></div></div>
+<div id="workerBar" class="d-none" role="status" aria-live="polite"></div>
+<section class="row g-3 kpi-grid mb-4" aria-label="Indicadores principales">
+  <div class="col-12 col-md-4"><article class="kpi kpi-blue">
+    <div class="kpi-top"><span class="kpi-label">01 / SERVIDORES CARGADOS</span><i class="bi bi-hdd-stack" aria-hidden="true"></i></div>
+    <strong id="kTotal" aria-live="polite">—</strong><span class="kpi-sub">Registrados en el inventario</span>
+  </article></div>
+  <div class="col-12 col-md-4"><article class="kpi kpi-green">
+    <div class="kpi-top"><span class="kpi-label">02 / EN LÍNEA</span><i class="bi bi-check2-circle" aria-hidden="true"></i></div>
+    <strong id="kOnline" aria-live="polite">—</strong><span class="kpi-sub">Con mediciones recientes</span>
+  </article></div>
+  <div class="col-12 col-md-4"><article class="kpi kpi-red">
+    <div class="kpi-top"><span class="kpi-label">03 / SIN RESPUESTA</span><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></div>
+    <strong id="kDown" aria-live="polite">—</strong><span class="kpi-sub">Requieren revisión</span>
+  </article></div>
 </section>
-
-<section class="mb-4">
-  <h2 class="section-title">Servidores</h2>
-  <div class="row g-3" id="serverGrid">
-    <div class="col-12 text-muted">Cargando servidores...</div>
+<section aria-labelledby="serversHeading">
+  <div class="section-header">
+    <div><div class="eyebrow">ASSETS / LIVE STATUS</div><h2 id="serversHeading">Servidores</h2></div>
+    <a href="{{ url_for('page_servers') }}" class="btn btn-outline-secondary btn-action"><i class="bi bi-list-ul" aria-hidden="true"></i><span>Administrar</span></a>
   </div>
-</section>
-
-<section class="panel panel-blue">
-  <div class="panel-head"><h2>Uso promedio de las últimas 24 horas</h2></div>
-  <div class="panel-body">
-    <div id="avgChart" class="chart" style="height:320px"></div>
+  <div class="row g-3" id="serverGrid" aria-live="off">
+    <div class="col-12"><div class="empty"><i class="bi bi-hourglass-split" aria-hidden="true"></i><strong>Cargando servidores</strong>Consultando el estado del monitoreo...</div></div>
   </div>
 </section>
 {% endblock %}
-
 {% block scripts %}
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
