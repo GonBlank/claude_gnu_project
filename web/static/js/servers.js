@@ -173,13 +173,13 @@ $('#serversBody').addEventListener('click', event => {
     return;
   }
   if (event.target.closest('a, button, input, label, .form-check')) return;
-  location.assign('/servers/' + server.id);
+  navigateTo('/servers/' + server.id);
 });
 $('#serversBody').addEventListener('keydown', event => {
   const tr = event.target.closest('tr[data-id]');
   if (tr && event.target === tr && (event.key === 'Enter' || event.key === ' ')) {
     event.preventDefault();
-    location.assign('/servers/' + tr.dataset.id);
+    navigateTo('/servers/' + tr.dataset.id);
   }
 });
 $('#serversBody').addEventListener('change', async event => {

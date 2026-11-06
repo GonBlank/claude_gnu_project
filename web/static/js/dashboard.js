@@ -5,7 +5,7 @@ const hostNodes = new Map();
 
 function newHostCard(id) {
   const column = document.createElement('div');
-  column.className = 'col-12 col-md-6 col-xl-4';
+  column.className = 'col-12 col-sm-6 col-lg-4 col-xl-3';
   column.innerHTML = '<a class="srv-card" href="/servers/' + encodeURIComponent(id) + '">' +
     '<div class="srv-card-head"><span class="srv-card-icon"><i class="bi bi-hdd-network" aria-hidden="true"></i></span>' +
     '<span class="status-pill"></span></div>' +
@@ -16,8 +16,8 @@ function newHostCard(id) {
 }
 function updateHostCard(column, server) {
   const card = column.querySelector('.srv-card');
-  const sev = server.status === 'online' ? server.severity :
-    server.status === 'sin_respuesta' ? 'crit' : 'off';
+  // El dashboard comunica disponibilidad; las alarmas de recursos van en el detalle.
+  const sev = server.status === 'sin_respuesta' ? 'crit' : 'normal';
   card.className = 'srv-card sev-' + sev;
   card.setAttribute('aria-label', 'Ver detalle de ' + server.hostname + '. Estado: ' + STATUS[server.status]);
   const status = column.querySelector('.status-pill');
@@ -75,9 +75,9 @@ async function load(manual = false) {
   if (manual) setBusy(refresh, true, 'Actualizando...');
   try {
     const data = await api('/api/overview');
-    $('#kTotal').textContent = data.kpis.total;
-    $('#kOnline').textContent = data.kpis.online;
-    $('#kDown').textContent = data.kpis.down;
+    updateKpi('#kTotal', data.kpis.total);
+    updateKpi('#kOnline', data.kpis.online);
+    updateKpi('#kDown', data.kpis.down);
     renderWorker(data.worker);
     renderHosts(data.servers);
     $('#lastUpdate').textContent = 'Actualizado ' + new Date().toLocaleTimeString('es-AR');

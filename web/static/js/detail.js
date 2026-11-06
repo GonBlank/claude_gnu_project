@@ -8,6 +8,8 @@ let isLoading = false;
 let tableSignature = null;
 const detailChart = makeChart($('#histChart'));
 const avgChart = makeChart($('#avgChart'));
+let latestSeriesSignature = '';
+let latestAverageSignature = '';
 const seriesLine = (name, color, data = []) => ({
   id: name.toLowerCase(), name, type: 'line', smooth: true, showSymbol: false,
   data, lineStyle: { width: 2.5, color }, itemStyle: { color },
@@ -116,7 +118,11 @@ function renderMetricChart(data) {
     seriesLine('Disco', COLORS.amber, data.points.map(p => [p.ts, p.disco])),
   ];
   chartLines[0].markLine = thresholds(data.settings);
-  detailChart.setOption({ series: chartLines });
+  const signature = JSON.stringify({ points: data.points, settings: data.settings });
+  if (signature !== latestSeriesSignature) {
+    latestSeriesSignature = signature;
+    detailChart.setOption({ series: chartLines });
+  }
   $('#chartMeta').textContent = data.count + ' lecturas' +
     (range === '7d' ? ' · agrupadas cada 30 min' : '');
   $('#histNoData').classList.toggle('d-none', !!data.count);
@@ -143,10 +149,14 @@ function groupHalfHour(points) {
 }
 function renderAverageChart(data) {
   const points = groupHalfHour(data.points);
-  avgChart.setOption({ series: [
-    seriesLine('CPU', COLORS.blue, points.map(p => [p.ts, p.cpu])),
-    seriesLine('RAM', COLORS.purple, points.map(p => [p.ts, p.ram])),
-  ] });
+  const signature = JSON.stringify(points);
+  if (signature !== latestAverageSignature) {
+    latestAverageSignature = signature;
+    avgChart.setOption({ series: [
+      seriesLine('CPU', COLORS.blue, points.map(p => [p.ts, p.cpu])),
+      seriesLine('RAM', COLORS.purple, points.map(p => [p.ts, p.ram])),
+    ] });
+  }
 }
 function renderTable(records, settings) {
   const signature = JSON.stringify({ records, warn: settings.umbral_aviso, crit: settings.umbral_critico });

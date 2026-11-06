@@ -111,7 +111,11 @@ function level(value, config) {
 function chartBase() {
   return {
     backgroundColor: 'transparent',
-    animationDurationUpdate: 260,
+    animation: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    animationDuration: 340,
+    animationEasing: 'cubicOut',
+    animationDurationUpdate: 300,
+    animationEasingUpdate: 'cubicInOut',
     textStyle: { fontFamily: '"IBM Plex Mono", monospace', color: COLORS.muted, fontSize: 11 },
     grid: { left: 48, right: 24, top: 46, bottom: 48 },
     tooltip: {
@@ -135,4 +139,52 @@ function makeChart(el) {
   const chart = echarts.init(el, null, { renderer: 'canvas' });
   window.addEventListener('resize', () => chart.resize());
   return chart;
+}
+
+
+/* Transiciones entre vistas: para Firefox y navegadores sin View Transitions.
+   Conserva las acciones nativas de abrir nueva pestaña y los anclajes. */
+let pageNavigating = false;
+function navigateTo(href) {
+  const destination = new URL(href, window.location.href);
+  if (pageNavigating) return;
+  if (destination.origin !== window.location.origin ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    window.location.assign(destination.href);
+    return;
+  }
+  pageNavigating = true;
+  const page = document.querySelector('.page');
+  if (page) page.classList.add('is-leaving');
+  window.setTimeout(() => window.location.assign(destination.href), 150);
+}
+document.addEventListener('click', event => {
+  if (event.defaultPrevented || event.button !== 0 || event.ctrlKey ||
+      event.metaKey || event.shiftKey || event.altKey) return;
+  const anchor = event.target.closest('a[href]');
+  if (!anchor || anchor.download || (anchor.target && anchor.target !== '_self')) return;
+  const target = new URL(anchor.href);
+  if (target.origin !== window.location.origin) return;
+  if (target.pathname === location.pathname && target.search === location.search &&
+      (target.hash || target.href === location.href)) return;
+  event.preventDefault();
+  navigateTo(target.href);
+});
+window.addEventListener('pageshow', () => {
+  pageNavigating = false;
+  document.querySelector('.page')?.classList.remove('is-leaving');
+});
+
+/* Solo se anima el KPI cuando su valor efectivamente cambia. */
+function updateKpi(selector, value) {
+  const node = document.querySelector(selector);
+  const next = String(value);
+  if (!node || node.textContent === next) return;
+  node.textContent = next;
+  if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches && node.animate) {
+    node.animate([
+      { opacity: .68, transform: 'translateY(3px)' },
+      { opacity: 1, transform: 'translateY(0)' },
+    ], { duration: 210, easing: 'cubic-bezier(.16,1,.3,1)' });
+  }
 }

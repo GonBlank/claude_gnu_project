@@ -156,6 +156,22 @@ class FlujoCompleto(DBTestCase):
         self.assertEqual(d["worker"]["status"], "late")
         self.assertEqual(d["kpis"]["down"], 1)
 
+    def test_dashboard_compacto_y_navegacion_consistente(self):
+        # Los tres KPI son el único resumen. No se exponen gráficas en el panel.
+        page = self.web.get("/")
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'id="kTotal"', page.data)
+        self.assertIn(b'id="kOnline"', page.data)
+        self.assertIn(b'id="kDown"', page.data)
+        self.assertNotIn(b'id="avgChart"', page.data)
+        self.assertNotIn(b'id="histChart"', page.data)
+
+        detail = self.web.get("/servers/1")
+        self.assertEqual(detail.status_code, 200)
+        self.assertIn(b'id="histChart"', detail.data)
+        self.assertIn(b'id="avgChart"', detail.data)
+        self.assertEqual(self.web.get("/history?server=1").status_code, 302)
+
     def test_vista_detalle_y_redireccion_historico(self):
         # El panel solo ofrece los tres KPI; el detalle concentra los gráficos.
         home = self.web.get("/")
