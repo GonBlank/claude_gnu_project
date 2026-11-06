@@ -1,0 +1,54 @@
+# Tres módulos, cada uno en su carpeta: mysql/ (base), worker/ (consulta SNMP) y web/ (interfaz).
+name: snmp-monitor   # fija el nombre del proyecto (y del volumen) sin depender de la carpeta
+
+services:
+  mysql:
+    build: ./mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-cambiame-root}"
+      MYSQL_DATABASE: "${DB_NAME:-snmp_monitor}"
+      MYSQL_USER: "${DB_USER:-snmp}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:-cambiame}"
+      LOAD_DEMO_DATA: "${LOAD_DEMO_DATA:-0}"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      # Solo accesible desde esta máquina, para conectar un cliente SQL.
+      - "127.0.0.1:3307:3306"
+    restart: unless-stopped
+
+  worker:
+    build: ./worker
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: "${DB_NAME:-snmp_monitor}"
+      DB_USER: "${DB_USER:-snmp}"
+      DB_PASSWORD: "${DB_PASSWORD:-cambiame}"
+      SNMP_TIMEOUT: "${SNMP_TIMEOUT:-3}"
+      SNMP_RETRIES: "${SNMP_RETRIES:-1}"
+      LOG_LEVEL: "${LOG_LEVEL:-INFO}"
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    ports:
+      - "${WEB_PORT:-8080}:8000"
+    environment:
+      USE_MOCK: "${USE_MOCK:-0}"
+      WEB_USER: "${WEB_USER:-admin}"
+      WEB_PASSWORD: "${WEB_PASSWORD:-}"
+      DB_HOST: mysql
+      DB_PORT: "3306"
+      DB_NAME: "${DB_NAME:-snmp_monitor}"
+      DB_USER: "${DB_USER:-snmp}"
+      DB_PASSWORD: "${DB_PASSWORD:-cambiame}"
+    restart: unless-stopped
+    # Sin depends_on a propósito: con USE_MOCK=1 la web no necesita la base,
+    # y con USE_MOCK=0 responde 503 hasta que MySQL esté listo.
+
+volumes:
+  mysql_data:

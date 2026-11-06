@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Panel{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Panel</h1>
+    <p class="lead-sm">Estado de los servidores Ubuntu consultados por SNMP.</p>
+  </div>
+  <div class="d-flex align-items-center gap-3">
+    <span class="text-muted small" id="lastUpdate">Cargando...</span>
+    <button class="btn btn-sm btn-outline-info" id="btnRefresh"><i class="bi bi-arrow-clockwise"></i> Actualizar</button>
+  </div>
+</header>
+
+<div id="workerBar" class="d-none" role="status"></div>
+
+<section class="row g-3 mb-4" aria-label="Resumen">
+  <div class="col-6 col-lg-3"><div class="kpi kpi-blue"><span class="kpi-label">Servidores activos</span><strong id="kActive">-</strong><span class="kpi-sub" id="kActiveSub">&nbsp;</span></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi kpi-green"><span class="kpi-label">En línea</span><strong id="kOnline">-</strong><span class="kpi-sub" id="kOnlineSub">&nbsp;</span></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi kpi-red"><span class="kpi-label">Sin respuesta</span><strong id="kDown">-</strong><span class="kpi-sub" id="kDownSub">&nbsp;</span></div></div>
+  <div class="col-6 col-lg-3"><div class="kpi kpi-amber"><span class="kpi-label">CPU promedio ahora</span><strong id="kCpu">-</strong><span class="kpi-sub" id="kCpuSub">&nbsp;</span></div></div>
+</section>
+
+<section class="mb-4">
+  <h2 class="section-title">Servidores</h2>
+  <div class="row g-3" id="serverGrid">
+    <div class="col-12 text-muted">Cargando servidores...</div>
+  </div>
+</section>
+
+<section class="panel panel-blue">
+  <div class="panel-head"><h2>Uso promedio de las últimas 24 horas</h2></div>
+  <div class="panel-body">
+    <div id="avgChart" class="chart" style="height:320px"></div>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

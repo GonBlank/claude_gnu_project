@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Configuración{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>Configuración</h1>
+    <p class="lead-sm">Parámetros del monitoreo. Se guardan en la tabla <span class="mono">settings</span>.</p>
+  </div>
+</header>
+
+<section class="panel panel-amber" style="max-width: 760px;">
+  <div class="panel-head"><h2>Monitoreo</h2></div>
+  <div class="panel-body">
+    <div class="alert alert-danger py-2 d-none" id="settingsError" role="alert"></div>
+    <form id="settingsForm" novalidate>
+      <div class="row g-3">
+        <div class="col-sm-6">
+          <label for="sInterval" class="form-label">Intervalo de consulta (minutos)</label>
+          <input type="number" class="form-control" id="sInterval" min="1" max="60" required>
+        </div>
+        <div class="col-sm-6">
+          <label for="sRetention" class="form-label">Retención del histórico (días)</label>
+          <input type="number" class="form-control" id="sRetention" min="1" max="365" required>
+        </div>
+        <div class="col-12 form-text mt-1">
+          Un servidor figura como sin respuesta cuando pasan más de dos intervalos sin una medición nueva.
+        </div>
+        <div class="col-sm-6">
+          <label for="sWarn" class="form-label">Umbral de aviso (%)</label>
+          <input type="number" class="form-control" id="sWarn" min="1" max="99" required>
+        </div>
+        <div class="col-sm-6">
+          <label for="sCrit" class="form-label">Umbral crítico (%)</label>
+          <input type="number" class="form-control" id="sCrit" min="2" max="100" required>
+        </div>
+        <div class="col-12 form-text mt-1">
+          Se aplican a CPU, RAM y disco: las barras y los avisos cambian de color al superarlos.
+        </div>
+        <div class="col-12">
+          <label for="sCommunity" class="form-label">Community por defecto</label>
+          <input type="text" class="form-control mono" id="sCommunity" maxlength="64" required>
+          <div class="form-text">Se propone al agregar un servidor nuevo.</div>
+        </div>
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button type="submit" class="btn btn-warning" id="btnSaveSettings">Guardar cambios</button>
+        <button type="button" class="btn btn-outline-secondary" id="btnReload">Descartar</button>
+      </div>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/settings.js') }}"></script>
+{% endblock %}
