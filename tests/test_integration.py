@@ -18,6 +18,8 @@ import fake_pymysql  # noqa: E402
 
 fake_pymysql.install()
 os.environ["USE_MOCK"] = "0"
+# Credencial ficticia: estas pruebas usan una base simulada.
+os.environ.setdefault("DB_PASSWORD", "test-only")
 
 import app as web_app  # noqa: E402
 import collector  # noqa: E402

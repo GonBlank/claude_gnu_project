@@ -7,6 +7,7 @@ import unittest
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from collector import IncompleteData, build_metrics  # noqa: E402
+os.environ.setdefault("DB_PASSWORD", "test-only")  # no hay base real
 import main  # noqa: E402
 
 RAW_OK = {

@@ -1,0 +1,11 @@
+# Credenciales locales generadas por ./start.sh
+.env
+.env.*
+!.env.example
+
+# Artefactos locales de Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/

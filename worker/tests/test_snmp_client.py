@@ -10,6 +10,7 @@ import sys
 import types
 import unittest
 
+os.environ.setdefault("DB_PASSWORD", "test-only")  # pruebas sin base real
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import collector  # noqa: E402

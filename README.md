@@ -29,14 +29,14 @@ Requisitos: Docker con `docker compose` v2.
 ./start.sh            # mysql + worker + web
 ```
 
-Abre http://localhost:8080. La primera vez genera el `.env` con contraseñas nuevas e imprime el usuario y la clave de la web.
+Abre http://localhost:8080. La primera vez genera automáticamente `.env` con contraseñas aleatorias y permisos `600`, e imprime el usuario y la clave de la web. No hay que crear archivos manualmente: `.env` está excluido de Git y las contraseñas se inyectan al **ejecutar** los contenedores, nunca al construir las imágenes.
 
 ```bash
 ./start.sh status | logs worker | stop     # estado, logs, apagar (conserva los datos)
 ./start.sh reset                           # apaga y BORRA la base
 ```
 
-Para probar sin servidores reales: `USE_MOCK=1 docker compose up --build web` (solo la web, con datos de ejemplo). Con `LOAD_DEMO_DATA=1` en el `.env` la base arranca con 2 servidores inventados; el worker los va a consultar y va a loguear timeouts, así que conviene borrarlos desde la web.
+Para probar sin servidores reales, con el `.env` generado previamente por `./start.sh`: `USE_MOCK=1 docker compose up --build web` (solo la web, con datos de ejemplo). Con `LOAD_DEMO_DATA=1` en el `.env` la base arranca con 2 servidores inventados; el worker los va a consultar y va a loguear timeouts, así que conviene borrarlos desde la web.
 
 ## Conectar un servidor al controlador
 

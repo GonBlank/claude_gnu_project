@@ -5,10 +5,10 @@ services:
   mysql:
     build: ./mysql
     environment:
-      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:-cambiame-root}"
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?Falta MYSQL_ROOT_PASSWORD; ejecutar ./start.sh}"
       MYSQL_DATABASE: "${DB_NAME:-snmp_monitor}"
       MYSQL_USER: "${DB_USER:-snmp}"
-      MYSQL_PASSWORD: "${DB_PASSWORD:-cambiame}"
+      MYSQL_PASSWORD: "${DB_PASSWORD:?Falta DB_PASSWORD; ejecutar ./start.sh}"
       LOAD_DEMO_DATA: "${LOAD_DEMO_DATA:-0}"
     volumes:
       - mysql_data:/var/lib/mysql
@@ -27,7 +27,7 @@ services:
       DB_PORT: "3306"
       DB_NAME: "${DB_NAME:-snmp_monitor}"
       DB_USER: "${DB_USER:-snmp}"
-      DB_PASSWORD: "${DB_PASSWORD:-cambiame}"
+      DB_PASSWORD: "${DB_PASSWORD:?Falta DB_PASSWORD; ejecutar ./start.sh}"
       SNMP_TIMEOUT: "${SNMP_TIMEOUT:-3}"
       SNMP_RETRIES: "${SNMP_RETRIES:-1}"
       LOG_LEVEL: "${LOG_LEVEL:-INFO}"
@@ -40,12 +40,12 @@ services:
     environment:
       USE_MOCK: "${USE_MOCK:-0}"
       WEB_USER: "${WEB_USER:-admin}"
-      WEB_PASSWORD: "${WEB_PASSWORD:-}"
+      WEB_PASSWORD: "${WEB_PASSWORD:?Falta WEB_PASSWORD; ejecutar ./start.sh}"
       DB_HOST: mysql
       DB_PORT: "3306"
       DB_NAME: "${DB_NAME:-snmp_monitor}"
       DB_USER: "${DB_USER:-snmp}"
-      DB_PASSWORD: "${DB_PASSWORD:-cambiame}"
+      DB_PASSWORD: "${DB_PASSWORD:?Falta DB_PASSWORD; ejecutar ./start.sh}"
     restart: unless-stopped
     # Sin depends_on a propósito: con USE_MOCK=1 la web no necesita la base,
     # y con USE_MOCK=0 responde 503 hasta que MySQL esté listo.

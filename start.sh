@@ -27,12 +27,35 @@ create_env() {
     die "Hay una base de una instalación anterior pero falta el archivo .env. Restauralo, o ejecutá './start.sh reset' para empezar de cero."
   fi
   say "Creando .env con contraseñas nuevas"
+  umask 077  # .env solo será legible por el usuario que lo crea
   cp .env.example .env
   sed -i.bak \
     -e "s/^DB_PASSWORD=.*/DB_PASSWORD=$(rand)/" \
     -e "s/^MYSQL_ROOT_PASSWORD=.*/MYSQL_ROOT_PASSWORD=$(rand)/" \
     -e "s/^WEB_PASSWORD=.*/WEB_PASSWORD=$(rand)/" .env
   rm -f .env.bak
+}
+
+validate_env() {
+  # Impedir iniciar con valores vacíos o credenciales de ejemplo.
+  local key value
+  for key in DB_PASSWORD MYSQL_ROOT_PASSWORD WEB_PASSWORD; do
+    value="$(env_get "$key")"
+    case "$value" in
+      ""|cambiame|cambiame-root)
+        die "Credencial $key ausente o insegura en .env. Restaurá las credenciales originales o, si no hay datos, regenerá el archivo."
+        ;;
+    esac
+  done
+}
+
+compose_manage() {
+  # ps/logs/down no requieren claves reales: permite administrar y resetear
+  # incluso cuando se perdió .env, sin volver a generar claves persistentes.
+  DB_PASSWORD="${DB_PASSWORD:-$(rand)}" \
+  MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-$(rand)}" \
+  WEB_PASSWORD="${WEB_PASSWORD:-$(rand)}" \
+    docker compose "$@"
 }
 
 wait_web() {   # espera el healthcheck del contenedor web (no necesita curl)
@@ -51,6 +74,8 @@ wait_web() {   # espera el healthcheck del contenedor web (no necesita curl)
 case "${1:-start}" in
   start)
     [ -f .env ] || create_env
+    chmod 600 .env  # protege también instalaciones anteriores
+    validate_env
     say "Construyendo y levantando mysql, worker y web"
     docker compose up -d --build
     say "Esperando a que la web esté lista"
@@ -64,13 +89,13 @@ case "${1:-start}" in
       die "La web no quedó lista en 2 minutos. Revisá: ./start.sh logs web"
     fi
     ;;
-  stop)   say "Apagando"; docker compose down ;;
-  status) docker compose ps ;;
-  logs)   shift; docker compose logs -f --tail=100 "$@" ;;
+  stop)   say "Apagando"; compose_manage down ;;
+  status) compose_manage ps ;;
+  logs)   shift; compose_manage logs -f --tail=100 "$@" ;;
   reset)
     read -r -p "Esto borra TODOS los datos de MySQL. ¿Seguro? [s/N] " a
     [[ "$a" =~ ^[sS]$ ]] || { echo "Cancelado."; exit 0; }
-    docker compose down -v
+    compose_manage down -v
     ;;
   *) die "Uso: ./start.sh [start|stop|status|logs [módulo]|reset]" ;;
 esac
