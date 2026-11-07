@@ -1,18 +1,19 @@
 import calendar
-import calendar
-import hmac
 import ipaddress
 import os
 import re
 from datetime import timedelta
 
-from flask import Flask, Response, jsonify, render_template, request, redirect, url_for
+from flask import Flask, jsonify, render_template, request, redirect, url_for
+
+from auth import install_auth
 
 import store as store_mod
 from store import DBUnavailable, DEFAULT_SETTINGS, utcnow
 
 app = Flask(__name__)
 store = store_mod.get_store()
+install_auth(app)
 
 HOST_RE = re.compile(r"^[A-Za-z0-9]([A-Za-z0-9._-]{0,98}[A-Za-z0-9])?$")
 BUCKET = 1800  # 30 min
@@ -138,21 +139,6 @@ def clean_settings(payload):
 # ---------------------------------------------------------------------------
 # Páginas
 # ---------------------------------------------------------------------------
-@app.before_request
-def require_auth():
-    """Autenticación básica opcional: se activa si WEB_PASSWORD está definida."""
-    password = os.getenv("WEB_PASSWORD", "")
-    if not password or request.path == "/healthz":
-        return None
-    user = os.getenv("WEB_USER", "admin")
-    a = request.authorization
-    if (a and hmac.compare_digest((a.username or "").encode(), user.encode())
-            and hmac.compare_digest((a.password or "").encode(), password.encode())):
-        return None
-    return Response("Se requiere autenticación.", 401,
-                    {"WWW-Authenticate": 'Basic realm="Lector SNMP"'})
-
-
 @app.context_processor
 def inject():
     return {"mock": store.is_mock}

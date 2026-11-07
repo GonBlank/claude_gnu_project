@@ -41,6 +41,8 @@ services:
       USE_MOCK: "${USE_MOCK:-0}"
       WEB_USER: "${WEB_USER:-admin}"
       WEB_PASSWORD: "${WEB_PASSWORD:?Falta WEB_PASSWORD; ejecutar ./start.sh}"
+      # 1 si la web se sirve detrás de un reverse proxy HTTPS.
+      WEB_COOKIE_SECURE: "${WEB_COOKIE_SECURE:-0}"
       DB_HOST: mysql
       DB_PORT: "3306"
       DB_NAME: "${DB_NAME:-snmp_monitor}"

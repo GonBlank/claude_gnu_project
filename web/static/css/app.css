@@ -524,3 +524,29 @@ html.route-entering .page {
     opacity: 1; transform: none;
   }
 }
+
+
+/* Sesión web: acciones pequeñas, coherentes con la topbar compacta. */
+.topbar-meta { display: flex; align-items: center; gap: .65rem; }
+.session-user {
+  display: inline-flex; align-items: center; gap: .45rem;
+  padding: .35rem .6rem; color: #c6d0e2;
+  font: 500 .71rem "IBM Plex Mono", monospace;
+}
+.session-user .bi { color: #9fb6dc; font-size: .94rem; }
+.logout-form { margin: 0; }
+.logout-button {
+  min-height: 33px; padding: .4rem .65rem;
+  color: #c9ceda; border-color: #404757;
+  font: 500 .73rem "IBM Plex Mono", monospace;
+}
+.logout-button[aria-busy="true"] .bi { animation: spin 900ms linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 640px) {
+  .topbar-meta { gap: .25rem; }
+  .session-user { font-size: .67rem; }
+  .logout-button { padding: .4rem .5rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .logout-button[aria-busy="true"] .bi { animation: none; }
+}

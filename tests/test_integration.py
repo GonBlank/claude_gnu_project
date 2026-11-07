@@ -4,9 +4,9 @@ Ejecutar desde la raíz del proyecto:  python -m unittest discover -s tests -v
 No necesita Docker, MySQL ni red. Los agentes SNMP se simulan con funciones.
 """
 import asyncio
-import base64
 import datetime
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -261,16 +261,89 @@ class FlujoCompleto(DBTestCase):
         self.assertEqual(dup.status_code, 409)
         self.assertEqual(self.web.get("/api/servers/99/metrics").status_code, 404)
 
-    def test_autenticacion_opcional(self):
+    def test_login_con_sesion_cookie_y_proteccion_csrf(self):
+        # Ya no debe disparar el popup HTTP Basic: se muestra /login.
         os.environ["WEB_PASSWORD"] = "secreto"
-        tok = lambda u, p: {"Authorization": "Basic " + base64.b64encode(f"{u}:{p}".encode()).decode()}
-        self.assertEqual(self.web.get("/").status_code, 401)
-        self.assertEqual(self.web.get("/api/servers").status_code, 401)
-        self.assertEqual(self.web.get("/", headers=tok("admin", "mala")).status_code, 401)
-        self.assertEqual(self.web.get("/", headers=tok("admin", "secreto")).status_code, 200)
-        self.assertEqual(self.web.get("/healthz").status_code, 200)
-        os.environ["WEB_PASSWORD"] = ""
+        os.environ["WEB_USER"] = "admin"
+        try:
+            protected = self.web.get("/")
+            self.assertEqual(protected.status_code, 302)
+            self.assertIn("/login", protected.location)
+            unauth = self.web.get("/api/servers")
+            self.assertEqual(unauth.status_code, 401)
+            self.assertTrue(unauth.is_json)
+            self.assertNotIn("WWW-Authenticate", unauth.headers)
+            self.assertEqual(self.web.get("/healthz").status_code, 200)
+
+            # El formulario tiene desafío propio contra CSRF.
+            login = self.web.get("/login?next=/settings")
+            self.assertEqual(login.status_code, 200)
+            self.assertIn(b'id="loginForm"', login.data)
+            self.assertIn(b'css/login.css', login.data)
+            self.assertIn(b'js/login.js', login.data)
+            challenge = re.search(rb'name="challenge" value="([^"]+)"', login.data).group(1).decode()
+
+            without_challenge = self.web.post(
+                "/login", data={"username": "admin", "password": "secreto"}
+            )
+            self.assertEqual(without_challenge.status_code, 400)
+
+            challenge = re.search(
+                rb'name="challenge" value="([^"]+)"', without_challenge.data
+            ).group(1).decode()
+            denied = self.web.post("/login", data={
+                "username": "admin", "password": "erronea",
+                "challenge": challenge, "next": "/settings",
+            })
+            self.assertEqual(denied.status_code, 401)
+            self.assertIn("incorrectos".encode(), denied.data)
+            self.assertNotIn("WWW-Authenticate", denied.headers)
+
+            challenge = re.search(
+                rb'name="challenge" value="([^"]+)"', denied.data
+            ).group(1).decode()
+            accepted = self.web.post("/login", data={
+                "username": "admin", "password": "secreto",
+                "challenge": challenge, "next": "/settings",
+            })
+            self.assertEqual(accepted.status_code, 302)
+            self.assertTrue(accepted.location.endswith("/settings"))
+            cookie = accepted.headers["Set-Cookie"]
+            self.assertIn("snmp_session=", cookie)
+            self.assertIn("HttpOnly", cookie)
+            self.assertIn("SameSite=Lax", cookie)
+            self.assertEqual(self.web.get("/settings").status_code, 200)
+            self.assertEqual(self.web.get("/api/servers").status_code, 200)
+
+            # Una API autenticada no puede mutar sin el token del HTML.
+            payload = {"hostname": "snmp-test", "ip": "10.0.0.45",
+                       "comunidad": "test", "enabled": True}
+            self.assertEqual(self.web.post("/api/servers", json=payload).status_code, 403)
+            page = self.web.get("/servers")
+            csrf = re.search(rb'name="csrf-token" content="([^"]+)"', page.data).group(1).decode()
+            created = self.web.post(
+                "/api/servers", json=payload, headers={"X-CSRF-Token": csrf}
+            )
+            self.assertEqual(created.status_code, 201, created.data)
+
+            signed_out = self.web.post("/logout", data={"csrf_token": csrf})
+            self.assertEqual(signed_out.status_code, 302)
+            self.assertEqual(self.web.get("/api/servers").status_code, 401)
+            self.assertEqual(self.web.post("/logout").status_code, 302)
+
+            # Nunca redireccionar al usuario a dominios ajenos.
+            unsafe = self.web.get("/login?next=//attacker.example")
+            self.assertIn(b'name="next" value="/"', unsafe.data)
+        finally:
+            os.environ.pop("WEB_PASSWORD", None)
+            os.environ.pop("WEB_USER", None)
+
+    def test_autenticacion_opcional(self):
+        # El modo de desarrollo sin WEB_PASSWORD sigue siendo accesible.
+        os.environ.pop("WEB_PASSWORD", None)
         self.assertEqual(self.web.get("/").status_code, 200)
+        self.assertEqual(self.web.get("/api/servers").status_code, 200)
+        self.assertEqual(self.web.get("/login").status_code, 302)
 
 
 class ModoDemo(unittest.TestCase):

@@ -1,0 +1,288 @@
+/* SNMP Monitor / Login · visual language aligned with Proto Mono dashboard */
+:root {
+  color-scheme: dark;
+  --bg: #101015;
+  --surface: #1d1d24;
+  --line: #363942;
+  --cream: #f1f0e1;
+  --muted: #a2a6b1;
+  --blue: #506385;
+  --blue-light: #9eb4d6;
+  --ease: cubic-bezier(.2,0,0,1);
+  --enter: cubic-bezier(.16,1,.3,1);
+}
+*, *::before, *::after { box-sizing: border-box; }
+html { min-height: 100%; }
+body {
+  min-height: 100vh;
+  margin: 0;
+  background: var(--bg);
+  color: var(--cream);
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; }
+:focus-visible { outline: 2px solid #9eb4d6; outline-offset: 3px; }
+::selection { background: var(--blue); color: var(--cream); }
+.login-layout { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(440px, .98fr); }
+.login-showcase {
+  min-height: 100vh;
+  isolation: isolate;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: clamp(1.5rem, 4.2vw, 4.2rem);
+  background: radial-gradient(ellipse at 70% 54%, #384866 0%, #242e41 30%, transparent 64%),
+              linear-gradient(155deg,#202737 0%,#18202e 57%,#151820 100%);
+  border-right: 1px solid #34445e;
+}
+.login-showcase::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(210,223,245,.08) 1px, transparent 1px),
+    linear-gradient(90deg,rgba(210,223,245,.08) 1px,transparent 1px);
+  background-size: 36px 36px;
+  -webkit-mask-image: linear-gradient(135deg,transparent 12%, #000 95%);
+  mask-image: linear-gradient(135deg,transparent 12%, #000 95%);
+  z-index: -1;
+  pointer-events: none;
+}
+.login-showcase::after {
+  content: "";
+  position: absolute;
+  width: 510px;
+  height: 510px;
+  bottom: 10%;
+  left: -265px;
+  border-radius: 50%;
+  border: 1px solid rgba(190,211,242,.11);
+  box-shadow: 0 0 0 64px rgba(183,200,230,.025), 0 0 0 130px rgba(183,200,230,.018);
+  pointer-events: none;
+}
+.login-brand {
+  display: inline-flex; align-self: flex-start; align-items: center; gap: .7rem;
+  color: var(--cream); text-decoration: none;
+  font: 600 .91rem "IBM Plex Mono",monospace; letter-spacing: -.015em;
+}
+.login-brand__symbol {
+  display: inline-grid; place-items: center;
+  width: 34px; height: 34px;
+  color: var(--cream);
+  background: #51678b; border: 1px solid #869ab8;
+  border-radius: 6px; font-size: 1.05rem;
+}
+.login-brand__slash { color: var(--blue-light); padding: 0 .1rem; }
+.login-showcase__content {
+  width: min(100%, 560px);
+  margin: auto 0;
+  padding: 2.4rem 0 1.8rem;
+}
+.login-eyebrow, .login-access__eyebrow {
+  display: flex; align-items: center; gap: .6rem;
+  font: 500 .65rem "IBM Plex Mono",monospace;
+  color: #b4c7e3;
+  letter-spacing: .13em;
+}
+.login-eyebrow__line { display: inline-block; width: 17px; height: 1px; background: #b4c7e3; }
+.login-showcase h1 {
+  font: 500 clamp(2rem,3.5vw,3.45rem)/1.2 "IBM Plex Mono",monospace;
+  letter-spacing: -.07em; margin: 1.15rem 0 1rem;
+}
+.login-showcase h1 span { color: #a9bfdf; }
+.login-showcase__content > p {
+  color: #c4ccda; font-size: .94rem; line-height: 1.7; margin: 0;
+  max-width: 395px;
+}
+.login-network {
+  position: relative; width: min(100%,460px); height: 190px;
+  margin: 2.5rem 0 0;
+}
+.login-network__hub, .login-network__node {
+  position: absolute; z-index: 2;
+  border: 1px solid rgba(178,205,245,.36);
+  background: rgba(22,29,44,.78);
+  box-shadow: 0 12px 30px rgba(0,0,0,.12);
+  border-radius: 8px;
+  display: flex; align-items: center;
+  backdrop-filter: blur(6px);
+}
+.login-network__hub {
+  top: 53px; left: 0; height: 78px; width: 126px;
+  flex-direction: column; justify-content: center; gap: .35rem;
+  color: #e5e9f1;
+}
+.login-network__hub i { font-size: 1.45rem; color: #aec6e8; }
+.login-network__hub small { font: 500 .59rem "IBM Plex Mono",monospace; letter-spacing: .08em; }
+.login-network__node {
+  right: 0; width: 119px; height: 39px;
+  gap: .7rem; padding: 0 .75rem;
+  color: #cbd6e6; font: 500 .61rem "IBM Plex Mono",monospace;
+}
+.login-network__node i { color: #91b7d1; font-size: 1.05rem; }
+.login-network__node--one { top: 0; }
+.login-network__node--two { top: 74px; }
+.login-network__node--three { bottom: 0; }
+.login-network__path {
+  position: absolute;
+  left: 126px; right: 118px;
+  height: 1px;
+  background: linear-gradient(90deg,rgba(170,194,226,.65),rgba(170,194,226,.24));
+}
+.login-network__path::after {
+  content: ""; position: absolute; right: 0; top: -2px;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: #8ab8db; box-shadow: 0 0 10px rgba(135,190,230,.5);
+}
+.login-network__path--one { top: 20px; transform: rotate(-16deg); transform-origin: left center; }
+.login-network__path--two { top: 93px; }
+.login-network__path--three { top: 165px; transform: rotate(16deg); transform-origin: left center; }
+.login-showcase__footer {
+  display: flex; align-items: center; gap: .5rem;
+  color: #b0c0d8; font: .65rem "IBM Plex Mono",monospace;
+  letter-spacing: .05em;
+}
+.login-showcase__point { width: 6px; height: 6px; background: #6bc9a7; border-radius: 50%; }
+.login-showcase__edition { color: #7185a4; }
+
+.login-access {
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 0; min-height: 100vh;
+  padding: 4rem clamp(1.35rem,4vw,4.5rem) 6rem;
+  background:
+    radial-gradient(ellipse at 95% 0%,rgba(80,99,133,.09),transparent 42%),
+    var(--bg);
+}
+.login-access__panel {
+  width: min(100%, 405px);
+  animation: login-arrival 430ms var(--enter) both;
+}
+.login-access__eyebrow { color: #95a9c9; letter-spacing: .09em; }
+.login-access__eyebrow i { font-size: .88rem; }
+.login-access__eyebrow span { margin-left: auto; color: #5e6b81; }
+.login-access h2 {
+  margin: 1.1rem 0 .6rem;
+  font: 500 clamp(1.8rem,3vw,2.55rem)/1.2 "IBM Plex Mono",monospace;
+  letter-spacing: -.055em;
+}
+.login-dot { color: #8ca7d0; }
+.login-subtitle { margin: 0 0 2.3rem; line-height: 1.6; color: var(--muted); font-size: .88rem; }
+.login-alert {
+  display: flex; align-items: flex-start; gap: .7rem;
+  padding: .85rem .95rem; margin-bottom: 1.25rem;
+  border-radius: 6px; border: 1px solid rgba(231,125,127,.38);
+  background: rgba(231,125,127,.1);
+  color: #ffc3c5; font-size: .82rem; line-height: 1.55;
+}
+.login-alert i { flex: 0 0 auto; margin-top: .1rem; }
+.login-field { margin-bottom: 1.35rem; }
+.login-field > label, .login-label-row label {
+  display: block; color: #e3e3e2;
+  font: 500 .76rem "IBM Plex Mono",monospace;
+  margin-bottom: .63rem;
+}
+.login-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; }
+.login-label-row span { color: #777f8d; font: .58rem "IBM Plex Mono",monospace; letter-spacing: .06em; }
+.login-input { position: relative; }
+.login-input > i {
+  position: absolute; left: .95rem; top: 50%; transform: translateY(-50%);
+  color: #8d99ad; font-size: 1rem; pointer-events: none;
+  transition: color 180ms ease;
+}
+.login-input:focus-within > i { color: #acc4e7; }
+.login-input input {
+  display: block; width: 100%;
+  min-height: 49px; padding: .75rem 2.75rem;
+  outline: none;
+  border: 1px solid #454954; border-radius: 6px;
+  background: #191a22;
+  color: var(--cream);
+  font-size: .89rem;
+  transition: border-color 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+}
+.login-input input::placeholder { color: #777d8b; }
+.login-input input:focus {
+  border-color: #92aacc; background: #1d202b;
+  box-shadow: 0 0 0 3px rgba(109,143,195,.17);
+}
+.login-input input.is-invalid { border-color: #e18183; box-shadow: 0 0 0 3px rgba(225,129,131,.10); }
+.login-reveal {
+  position: absolute; top: 50%; right: .65rem; transform: translateY(-50%);
+  border: 0; border-radius: 4px;
+  background: transparent; color: #9ca8bb;
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  cursor: pointer;
+  transition: color 180ms ease, background-color 180ms ease;
+}
+.login-reveal:hover { color: #fff; background: rgba(173,193,223,.09); }
+.login-validation { display: none; padding-top: .4rem; color: #e8a0a2; font-size: .76rem; }
+.login-input:has(.is-invalid) + .login-validation { display: block; }
+.login-submit {
+  width: 100%; min-height: 49px;
+  display: flex; align-items: center; justify-content: center; gap: .7rem;
+  margin-top: 1.7rem; padding: .85rem 1rem;
+  border: 1px solid #7189b2; border-radius: 6px;
+  background: #506385; color: #f1f0e1;
+  font: 600 .82rem "IBM Plex Mono",monospace;
+  cursor: pointer;
+  transition: background-color 230ms ease, box-shadow 230ms ease, transform 230ms var(--ease);
+}
+.login-submit > .bi { margin-left: auto; font-size: 1rem; transition: transform 230ms var(--ease); }
+.login-submit__label { margin-left: auto; }
+.login-submit:hover:not(:disabled) { background: #657d9f; box-shadow: 0 5px 20px rgba(80,99,133,.2); }
+.login-submit:hover:not(:disabled) > .bi { transform: translateX(2px); }
+.login-submit:active:not(:disabled) { transform: translateY(1px); }
+.login-submit:disabled { cursor: progress; opacity: .75; }
+.login-submit__spinner {
+  display: none;
+  width: 15px; height: 15px;
+  border: 2px solid rgba(241,240,225,.25);
+  border-top-color: var(--cream); border-radius: 50%;
+  animation: login-spinner 700ms linear infinite;
+}
+.login-submit.is-busy .login-submit__spinner { display: block; }
+.login-submit.is-busy > .bi { display: none; }
+.login-submit.is-busy .login-submit__label { margin: 0; }
+.login-help {
+  display: flex; gap: .6rem; align-items: flex-start;
+  margin-top: 1.6rem; padding-top: 1.25rem;
+  border-top: 1px solid #30313a;
+  color: #898f9d; font-size: .74rem; line-height: 1.55;
+}
+.login-help i { color: #91a9cb; flex-shrink: 0; margin-top: .08rem; }
+.login-help code {
+  color: #c6d4ea; background: #252c39;
+  border-radius: 3px; padding: .08rem .3rem;
+  font: .73rem "IBM Plex Mono",monospace;
+}
+.login-access__footer {
+  position: absolute; bottom: 2rem; left: clamp(1.35rem,4vw,4.5rem); right: clamp(1.35rem,4vw,4.5rem);
+  display: flex; justify-content: space-between; align-items: center; gap: .8rem;
+  color: #656c78; font: .62rem "IBM Plex Mono",monospace; letter-spacing: .05em;
+}
+.login-access__footer span span { color: #515b71; }
+.login-access__footer i { color: #6e9c90; font-size: .45rem; margin-right: .2rem; vertical-align: middle; }
+.login-page.is-submitting .login-access__panel { opacity: 0; transform: translate3d(0,-6px,0); transition: transform 180ms cubic-bezier(.4,0,1,1), opacity 180ms ease-in; }
+@keyframes login-arrival { from { opacity: 0; transform: translate3d(0,10px,0); } to { opacity: 1; transform: translate3d(0,0,0); } }
+@keyframes login-spinner { to { transform: rotate(360deg); } }
+@media (max-width: 1030px) {
+  .login-layout { grid-template-columns: minmax(0,.92fr) minmax(395px,1.08fr); }
+  .login-showcase { padding: 2rem; }
+  .login-network { width: 100%; }
+}
+@media (max-width: 750px) {
+  .login-layout { display: block; }
+  .login-showcase { min-height: 0; padding: 1.1rem 1.4rem 1.2rem; border-right: 0; border-bottom: 1px solid #34445e; }
+  .login-showcase__content, .login-showcase__footer { display: none; }
+  .login-brand { font-size: .85rem; }
+  .login-access { min-height: calc(100dvh - 79px); padding: 3.5rem 1.4rem 5rem; }
+  .login-access__footer { bottom: 1.3rem; left: 1.4rem; right: 1.4rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  .login-page.is-submitting .login-access__panel { opacity: 1; transform: none; }
+}

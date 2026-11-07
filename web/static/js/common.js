@@ -18,13 +18,25 @@ function esc(value) {
 }
 
 async function api(url, { method = 'GET', body } = {}) {
+  const headers = body ? { 'Content-Type': 'application/json' } : {};
+  // El token es leído del HTML autenticado, nunca de una cookie accesible a JS.
+  if (!['GET', 'HEAD', 'OPTIONS'].includes(method.toUpperCase())) {
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+    if (csrf) headers['X-CSRF-Token'] = csrf;
+  }
   const response = await fetch(url, {
-    method, headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    method, headers, body: body ? JSON.stringify(body) : undefined,
   });
   if (response.status === 204) return null;
   let data = null;
   try { data = await response.json(); } catch { /* sin cuerpo JSON */ }
+  if (response.status === 401) {
+    const next = window.location.pathname + window.location.search;
+    const login = '/login?next=' + encodeURIComponent(next);
+    if (typeof window.navigateTo === 'function') window.navigateTo(login);
+    else window.location.assign(login);
+    throw new Error('Sesión caducada. Iniciá sesión nuevamente.');
+  }
   if (!response.ok) throw new Error((data && data.error) || 'Error ' + response.status);
   return data;
 }
@@ -155,3 +167,12 @@ function updateKpi(selector, value) {
     ], { duration: 210, easing: 'cubic-bezier(.16,1,.3,1)' });
   }
 }
+
+
+/* El cierre de sesión también muestra inmediatamente el estado transitorio. */
+document.querySelector('.logout-form')?.addEventListener('submit', event => {
+  const button = event.currentTarget.querySelector('button[type="submit"]');
+  if (!button) return;
+  button.setAttribute('aria-busy', 'true');
+  button.querySelector('.bi')?.classList.replace('bi-box-arrow-right', 'bi-arrow-repeat');
+});

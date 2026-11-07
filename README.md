@@ -37,6 +37,8 @@ Requisitos: Docker con `docker compose` v2.
 
 Abre http://localhost:8080. La primera vez genera automáticamente `.env` con contraseñas aleatorias y permisos `600`, e imprime el usuario y la clave de la web. No hay que crear archivos manualmente: `.env` está excluido de Git y las contraseñas se inyectan al **ejecutar** los contenedores, nunca al construir las imágenes.
 
+**Login web:** al abrir el panel aparece `/login`, una pantalla propia (ya no se usa el popup HTTP Basic). Usá el mismo `WEB_USER` / `WEB_PASSWORD` de `.env`. La sesión firmada dura 8 horas, incluye botón **Salir**, límite de intentos fallidos y protección CSRF en las acciones de escritura. Cambiar `WEB_PASSWORD` invalida las sesiones. Para usar HTTPS detrás de un proxy, activar `WEB_COOKIE_SECURE=1` en `.env` y recrear el servicio web. El HTTP local no cifra credenciales: no exponerlo a Internet sin HTTPS.
+
 ```bash
 ./start.sh status | logs worker | stop     # estado, logs, apagar (conserva los datos)
 ./start.sh reset                           # apaga y BORRA la base
@@ -78,6 +80,6 @@ cd worker && python -m unittest discover -s tests # cálculo de métricas, ronda
 ## Límites a tener en cuenta
 
 - SNMP v2c no cifra: la community viaja en texto plano. En la base también se guarda en texto plano (el worker la necesita).
-- El login de la web es HTTP básico sin TLS: pensado para una red interna. Si se expone, ponerle un proxy con HTTPS.
+- La autenticación web utiliza formulario y cookie firmada (HTTP-only, SameSite=Lax) sin TLS local. Si se expone fuera de una red confiable, configurar HTTPS y `WEB_COOKIE_SECURE=1` en un reverse proxy.
 - La web no muestra *por qué* un servidor no responde; eso queda solo en los logs del worker.
 - Bootstrap, ECharts y las tipografías se cargan desde CDN: el navegador necesita internet.
